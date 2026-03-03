@@ -1,3 +1,6 @@
 .env
 env-setup.txt
 paste_openai_key_here.txt
+node_modules/
+.DS_Store
+npm-debug.log*
