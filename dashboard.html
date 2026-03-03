@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoiceBridge | Dashboard</title>
+    <link rel="stylesheet" href="styles.css?v=20260218-1" />
+  </head>
+  <body>
+    <div class="dash-shell">
+      <aside class="sidebar glass">
+        <div>
+          <p class="eyebrow">VoiceBridge</p>
+          <h1>Calls</h1>
+        </div>
+        <div class="profile-block">
+          <p id="userEmail" class="muted">-</p>
+          <p id="myIdLabel" class="id-pill">ID: -</p>
+        </div>
+        <button id="logoutBtn" class="btn ghost full">Log Out</button>
+      </aside>
+
+      <main class="dash-main">
+        <section class="panel glass span-2" id="setupPanel" style="display:none;">
+          <h2>Finish Profile Setup</h2>
+          <p class="muted">Choose your unique call ID to activate calling.</p>
+          <div class="dial-row">
+            <input id="setupCallIdInput" type="text" placeholder="Choose call ID (e.g. eric-100)" />
+            <button id="setupProfileBtn" class="btn">Save ID</button>
+          </div>
+          <p id="setupStatus" class="status-line"></p>
+        </section>
+
+        <section class="panel glass">
+          <h2>Start a Call</h2>
+          <div class="dial-row">
+            <input id="dialIdInput" type="text" placeholder="Enter recipient call ID" />
+            <button id="callBtn" class="btn">Call</button>
+            <button id="devPreviewBtn" class="btn ghost">Open In-Call (Dev)</button>
+          </div>
+          <p id="incomingStatus" class="status-line">No incoming calls</p>
+          <p id="callStatus" class="status-line">Idle</p>
+        </section>
+
+        <section class="panel glass span-2">
+          <h2>Group Rooms</h2>
+          <p class="muted">Create a share link so multiple people can join the same call room.</p>
+          <div class="dial-row">
+            <button id="createRoomBtn" class="btn">Create Room</button>
+            <button id="copyRoomLinkBtn" class="btn ghost">Copy Link</button>
+          </div>
+          <label>
+            Active room link
+            <input id="roomLinkInput" type="text" readonly placeholder="Create or join a room to get a link" />
+          </label>
+          <div class="dial-row">
+            <input id="joinRoomInput" type="text" placeholder="Paste room link or room ID" />
+            <button id="joinRoomBtn" class="btn">Join Room</button>
+            <button id="leaveRoomBtn" class="btn danger">Leave Room</button>
+          </div>
+          <p id="roomStatus" class="status-line">Not in a room</p>
+          <p id="roomParticipants" class="status-line">Participants: -</p>
+        </section>
+
+        <section class="panel glass">
+          <h2>Call History</h2>
+          <div id="callLogList" class="log-list"></div>
+        </section>
+
+      </main>
+    </div>
+
+    <div id="incomingModal" class="incoming-modal hidden" style="display:none;">
+      <div class="incoming-card glass">
+        <p class="eyebrow">Incoming Call</p>
+        <h2 id="incomingCallerLabel">Unknown caller</h2>
+        <div class="dial-row">
+          <button id="answerBtn" class="btn">Accept</button>
+          <button id="rejectBtn" class="btn danger">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="outgoingModal" class="outgoing-modal hidden" style="display:none;">
+      <div class="outgoing-card glass">
+        <p class="eyebrow">Calling</p>
+        <h2 id="outgoingTargetLabel">Unknown</h2>
+        <p class="status-line">Ringing...</p>
+        <div class="dial-row">
+          <button id="cancelOutgoingBtn" class="btn danger">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="callModal" class="call-modal hidden" style="display:none;">
+      <div class="call-card glass">
+        <p class="eyebrow">In Call</p>
+        <div class="video-grid">
+          <div class="video-pane">
+            <video id="localVideo" autoplay muted playsinline></video>
+          </div>
+          <div class="video-pane">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div id="remoteAvatar" class="remote-avatar">Remote</div>
+          </div>
+        </div>
+        <div class="dial-row">
+          <button id="toggleMuteBtn" class="btn ghost">Mute</button>
+          <button id="toggleCameraBtn" class="btn ghost">Camera Off</button>
+          <button id="endCallBtn" class="btn danger">End</button>
+        </div>
+        <div class="translation-feed">
+          <h3>Live Translation Captions</h3>
+          <div id="translationFeed"></div>
+        </div>
+        <div id="remoteAudioBucket" class="hidden"></div>
+      </div>
+    </div>
+
+    <script src="app-config.js"></script>
+    <script type="module" src="dashboard.js?v=20260218-1"></script>
+  </body>
+</html>

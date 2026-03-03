@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoiceBridge | Login</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="auth-shell">
+      <a class="back-link" href="index.html">Back to Home</a>
+
+      <section class="auth-card glass" id="loginPanel">
+        <h1>Customer Login</h1>
+        <p class="muted">Existing customers sign in here.</p>
+        <div class="input-grid">
+          <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" />
+          <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
+        </div>
+        <button id="loginBtn" class="btn full">Log In</button>
+      </section>
+
+      <section class="auth-card glass" id="signupPanel">
+        <h2>Create Account + Pick ID</h2>
+        <p class="muted">Your call ID is set during signup.</p>
+        <div class="input-grid">
+          <input id="signupEmail" type="email" placeholder="Email" autocomplete="email" />
+          <input id="signupPassword" type="password" placeholder="Password" autocomplete="new-password" />
+          <input id="signupPassword2" type="password" placeholder="Confirm Password" autocomplete="new-password" />
+          <input id="signupCallId" type="text" placeholder="Choose Call ID (e.g. alex-77)" />
+          <label>
+            My Language
+            <select id="signupLanguage">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+            </select>
+          </label>
+          <label>
+            Incoming Translation To
+            <select id="signupIncomingLanguage">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+            </select>
+          </label>
+        </div>
+        <button id="signupBtn" class="btn full">Create Account</button>
+      </section>
+
+      <p id="authStatus" class="status-line">Ready</p>
+    </main>
+
+    <script type="module" src="auth.js"></script>
+  </body>
+</html>
