@@ -167,7 +167,9 @@ const state = {
   turnExpiresAtMs: 0,
   turnFetchPromise: null,
   answerApplyRetryTimer: null,
+  presenceHeartbeatTimer: null,
 };
+const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 const defaultIceServers = [{ urls: ["stun:stun.l.google.com:19302"] }];
 
@@ -188,6 +190,18 @@ els.addContactBtn?.addEventListener("click", saveContact);
 els.remoteVideo.addEventListener("loadeddata", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("playing", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("pause", updateRemoteAvatarVisibility);
+document.addEventListener("visibilitychange", () => {
+  syncPresence().catch(() => {});
+});
+window.addEventListener("online", () => {
+  syncPresence().catch(() => {});
+});
+window.addEventListener("offline", () => {
+  syncPresence().catch(() => {});
+});
+window.addEventListener("beforeunload", () => {
+  markPresenceBestEffort("background");
+});
 els.remoteVideo.muted = true;
 els.remoteVideo.volume = 0;
 resetAllModals();
@@ -220,6 +234,10 @@ onAuthStateChanged(auth, async (user) => {
   applyDashboardLocale();
   els.myIdLabel.textContent = `ID: ${state.profile.callId}`;
 
+  startDashboardRealtime();
+});
+
+function startDashboardRealtime() {
   ensureTurnIceServers().catch(() => {
     setStatus(els.callStatus, "TURN unavailable, using fallback connectivity.");
   });
@@ -227,7 +245,8 @@ onAuthStateChanged(auth, async (user) => {
   watchIncomingCalls();
   watchCallLogs();
   watchContacts();
-});
+  startPresenceHeartbeat();
+}
 
 async function setupMissingProfileFromForm() {
   if (!state.user) return;
@@ -265,6 +284,7 @@ async function setupMissingProfileFromForm() {
     locale.code = state.profile?.language === "es" ? "es" : "en";
     applyDashboardLocale();
     watchContacts();
+    startDashboardRealtime();
     return;
   } catch (err) {
     // Fallback write path.
@@ -290,6 +310,7 @@ async function setupMissingProfileFromForm() {
       locale.code = state.profile?.language === "es" ? "es" : "en";
       applyDashboardLocale();
       watchContacts();
+      startDashboardRealtime();
       return;
     } catch (err2) {
       setStatus(els.setupStatus, `Profile setup failed: ${err2.message}`);
@@ -299,6 +320,7 @@ async function setupMissingProfileFromForm() {
 }
 
 function watchIncomingCalls() {
+  if (state.unsubIncoming) state.unsubIncoming();
   const q = query(collection(db, "calls"), where("receiverUid", "==", state.user.uid));
 
   state.unsubIncoming = onSnapshot(q, (snap) => {
@@ -315,6 +337,7 @@ function watchIncomingCalls() {
       els.incomingCallerLabel.textContent = state.incomingCall.callerId || "Unknown caller";
       showIncomingModal();
       if (previousIncomingId !== state.incomingCall.id) {
+        markIncomingSeen(state.incomingCall.id);
         startRingtone();
         notifyIncomingCall(state.incomingCall.callerId || "Unknown caller", state.incomingCall.id);
       }
@@ -328,6 +351,8 @@ function watchIncomingCalls() {
 }
 
 function watchCallLogs() {
+  if (state.unsubLogsA) state.unsubLogsA();
+  if (state.unsubLogsB) state.unsubLogsB();
   const qCaller = query(collection(db, "calls"), where("callerUid", "==", state.user.uid));
   const qReceiver = query(collection(db, "calls"), where("receiverUid", "==", state.user.uid));
 
@@ -524,7 +549,7 @@ async function startCallById(targetId) {
     });
 
     state.currentCallId = callRef.id;
-    startRingingTimeout(callRef.id, targetId);
+    startRingingTimeout(callRef.id, targetId, receiverUid);
 
     const offerCandidatesRef = collection(db, "calls", callRef.id, "offerCandidates");
     const answerCandidatesRef = collection(db, "calls", callRef.id, "answerCandidates");
@@ -550,6 +575,15 @@ async function startCallById(targetId) {
 
       if (data.status === "ringing") {
         setStatus(els.callStatus, `Ringing ${targetId}...`);
+      }
+
+      if (data.status === "connecting") {
+        setStatus(els.callStatus, `${targetId} accepted. Connecting media...`);
+        stopRingback();
+        hideOutgoingModal();
+        if (!state.devCallPreview) {
+          showCallModal();
+        }
       }
 
       if (data.status === "active") {
@@ -611,6 +645,11 @@ async function answerIncomingCall() {
     setStatus(els.callStatus, "Connecting...");
     stopRingtone();
     closeIncomingNotification();
+    await updateDoc(callRef, {
+      status: "connecting",
+      receiverAcceptedAt: serverTimestamp(),
+      receiverAcceptedSessionId: DASH_SESSION_ID,
+    });
     await setupPeer(false);
     state.remotePeerId = state.incomingCall.callerId || "Remote";
     setRemoteAvatarLabel(state.remotePeerId);
@@ -635,6 +674,7 @@ async function answerIncomingCall() {
       answer: { type: answer.type, sdp: answer.sdp },
       status: "active",
       answeredAt: serverTimestamp(),
+      receiverMediaReadyAt: serverTimestamp(),
     });
 
     state.currentCallId = state.incomingCall.id;
@@ -674,6 +714,12 @@ async function answerIncomingCall() {
       // Ignore update failures; caller timeout fallback still applies.
     }
     setStatus(els.callStatus, `Answer failed: ${err.message}`);
+    const reason = classifyAnswerFailureReason(err);
+    if (reason === "receiver_media_denied") {
+      window.alert("Could not join call: Camera/Microphone permission was denied on this device.");
+    } else {
+      window.alert("Could not join call. Please try again.");
+    }
     await teardownCall();
   }
 }
@@ -827,6 +873,12 @@ function maybeShowCallerOutcomePopup(targetId, data) {
 
   if (reason === "receiver_media_denied") {
     message = `${peer} accepted, but camera/microphone permission was denied.`;
+  } else if (reason === "receiver_media_setup_failed") {
+    message = `${peer} accepted, but media setup failed before joining.`;
+  } else if (reason === "receiver_no_action") {
+    message = `${peer} saw the incoming call but did not answer.`;
+  } else if (reason === "receiver_offline_or_background") {
+    message = `${peer} appears offline or in the background and could not answer.`;
   } else if (data?.status === "rejected") {
     message = `${peer} declined the call.`;
   } else if (reason === "no_answer_timeout") {
@@ -997,6 +1049,7 @@ async function cleanupAuthScoped() {
   state.turnIceServers = null;
   state.turnExpiresAtMs = 0;
   state.turnFetchPromise = null;
+  await stopPresenceHeartbeat();
   if (els.contactsList) els.contactsList.innerHTML = "";
   await teardownCall();
 }
@@ -1421,7 +1474,7 @@ function setModalVisible(el, visible) {
   el.style.display = visible ? "grid" : "none";
 }
 
-function startRingingTimeout(callId, targetId) {
+function startRingingTimeout(callId, targetId, receiverUid) {
   clearRingingTimeout();
   state.ringingTimeoutTimer = window.setTimeout(async () => {
     if (!state.currentCallId || state.currentCallId !== callId) return;
@@ -1430,20 +1483,114 @@ function startRingingTimeout(callId, targetId) {
       const snap = await getDoc(callRef);
       if (!snap.exists()) return;
       const data = snap.data() || {};
-      if (data.status !== "ringing" || data.answer) {
+      if (!["ringing", "connecting"].includes(String(data.status || "")) || data.answer) {
         return;
+      }
+
+      let endedReason = "no_answer_timeout";
+      try {
+        const receiverSnap = await getDoc(doc(db, "users", receiverUid));
+        endedReason = inferNoAnswerReason(data, receiverSnap.exists() ? receiverSnap.data() : null);
+      } catch {
+        endedReason = inferNoAnswerReason(data, null);
       }
 
       await updateDoc(doc(db, "calls", callId), {
         status: "ended",
         endedAt: serverTimestamp(),
-        endedReason: "no_answer_timeout",
+        endedReason,
       });
-      setStatus(els.callStatus, `No answer from ${targetId}. Call ended.`);
+      setStatus(els.callStatus, `${targetId} did not connect in time. Call ended.`);
     } catch {
       // Ignore timeout update errors.
     }
   }, 35000);
+}
+
+function inferNoAnswerReason(callData, receiverProfile) {
+  if (callData?.receiverAcceptedAt && !callData?.answer) {
+    return "receiver_media_setup_failed";
+  }
+  if (callData?.receiverSeenAt && !callData?.receiverAcceptedAt) {
+    return "receiver_no_action";
+  }
+
+  const presenceState = String(receiverProfile?.presenceState || "");
+  const lastSeenMs = toMillis(receiverProfile?.lastSeenAt || receiverProfile?.presenceUpdatedAt);
+  const stale = !lastSeenMs || Date.now() - lastSeenMs > 45000;
+  if (presenceState === "offline" || presenceState === "background" || stale) {
+    return "receiver_offline_or_background";
+  }
+  return "no_answer_timeout";
+}
+
+function markIncomingSeen(callId) {
+  if (!state.user || !callId) return;
+  updateDoc(doc(db, "calls", callId), {
+    receiverSeenAt: serverTimestamp(),
+    receiverSeenSessionId: DASH_SESSION_ID,
+    receiverPresenceState: getPresenceState(),
+  }).catch(() => {});
+}
+
+function getPresenceState() {
+  if (!navigator.onLine) return "offline";
+  return document.visibilityState === "visible" ? "online" : "background";
+}
+
+async function syncPresence() {
+  if (!state.user) return;
+  await setDoc(
+    doc(db, "users", state.user.uid),
+    {
+      presenceState: getPresenceState(),
+      presenceUpdatedAt: serverTimestamp(),
+      lastSeenAt: serverTimestamp(),
+      presenceSessionId: DASH_SESSION_ID,
+      presenceUserAgent: String(navigator.userAgent || "").slice(0, 160),
+    },
+    { merge: true }
+  );
+}
+
+function startPresenceHeartbeat() {
+  stopPresenceHeartbeat().catch(() => {});
+  syncPresence().catch(() => {});
+  state.presenceHeartbeatTimer = window.setInterval(() => {
+    syncPresence().catch(() => {});
+  }, 20000);
+}
+
+async function stopPresenceHeartbeat() {
+  if (state.presenceHeartbeatTimer) {
+    window.clearInterval(state.presenceHeartbeatTimer);
+    state.presenceHeartbeatTimer = null;
+  }
+  if (!state.user) return;
+  await setDoc(
+    doc(db, "users", state.user.uid),
+    {
+      presenceState: "background",
+      presenceUpdatedAt: serverTimestamp(),
+      lastSeenAt: serverTimestamp(),
+      presenceSessionId: DASH_SESSION_ID,
+    },
+    { merge: true }
+  );
+}
+
+function markPresenceBestEffort(presenceState) {
+  if (!state.user) return;
+  setDoc(
+    doc(db, "users", state.user.uid),
+    {
+      presenceState,
+      presenceUpdatedAt: serverTimestamp(),
+      lastSeenAt: serverTimestamp(),
+      presenceSessionId: DASH_SESSION_ID,
+    },
+    { merge: true }
+  ).catch(() => {});
 }
 
 function clearRingingTimeout() {
