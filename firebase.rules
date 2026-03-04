@@ -17,6 +17,10 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read, update, create: if isOwner(uid);
+
+      match /contacts/{contactId} {
+        allow read, create, update, delete: if isOwner(uid);
+      }
     }
 
     match /callIds/{callId} {
