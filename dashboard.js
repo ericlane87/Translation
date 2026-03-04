@@ -166,6 +166,7 @@ const state = {
   turnIceServers: null,
   turnExpiresAtMs: 0,
   turnFetchPromise: null,
+  answerApplyRetryTimer: null,
 };
 
 const defaultIceServers = [{ urls: ["stun:stun.l.google.com:19302"] }];
@@ -554,19 +555,13 @@ async function startCallById(targetId) {
         clearRingingTimeout();
         stopRingback();
         hideOutgoingModal();
+        if (!state.devCallPreview) {
+          showCallModal();
+        }
       }
 
       if (data.answer && !state.pc.currentRemoteDescription) {
-        try {
-          await state.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-          setStatus(els.callStatus, "Connected");
-          clearRingingTimeout();
-          stopRingback();
-          hideOutgoingModal();
-          showCallModal();
-        } catch (err) {
-          setStatus(els.callStatus, `Connection setup delayed: ${err?.message || "retrying..."}`);
-        }
+        await applyRemoteAnswerWithRetry(data.answer);
       }
 
       if (data.status === "ended" || data.status === "rejected") {
@@ -765,6 +760,35 @@ async function setupPeer(isCaller) {
   }
 }
 
+async function applyRemoteAnswerWithRetry(answer) {
+  if (!state.pc || state.pc.currentRemoteDescription) return;
+
+  try {
+    await state.pc.setRemoteDescription(new RTCSessionDescription(answer));
+    setStatus(els.callStatus, "Connected");
+    clearRingingTimeout();
+    stopRingback();
+    hideOutgoingModal();
+    showCallModal();
+    clearAnswerApplyRetry();
+  } catch (err) {
+    setStatus(els.callStatus, `Connection setup delayed: ${err?.message || "retrying..."}`);
+    if (!state.answerApplyRetryTimer) {
+      state.answerApplyRetryTimer = window.setTimeout(() => {
+        state.answerApplyRetryTimer = null;
+        applyRemoteAnswerWithRetry(answer).catch(() => {});
+      }, 1200);
+    }
+  }
+}
+
+function clearAnswerApplyRetry() {
+  if (state.answerApplyRetryTimer) {
+    window.clearTimeout(state.answerApplyRetryTimer);
+    state.answerApplyRetryTimer = null;
+  }
+}
+
 async function getLocalMediaStream() {
   try {
     return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
@@ -862,6 +886,7 @@ async function teardownCall() {
   state.currentCallId = null;
   state.remotePeerId = "";
   clearRingingTimeout();
+  clearAnswerApplyRetry();
   state.unsubCall = null;
   state.unsubCandidatesA = null;
   state.unsubCandidatesB = null;
