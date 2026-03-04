@@ -1748,6 +1748,11 @@ async function getAuthHeaders() {
 
 async function ensureTurnIceServers() {
   const now = Date.now();
+  if (!apiBaseUrl) {
+    state.turnIceServers = defaultIceServers;
+    state.turnExpiresAtMs = now + 10 * 60_000;
+    return state.turnIceServers;
+  }
   if (state.turnIceServers?.length && now < state.turnExpiresAtMs - 60_000) {
     return state.turnIceServers;
   }
