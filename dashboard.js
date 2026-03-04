@@ -550,13 +550,23 @@ async function startCallById(targetId) {
         setStatus(els.callStatus, `Ringing ${targetId}...`);
       }
 
-      if (data.answer && !state.pc.currentRemoteDescription) {
-        await state.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        setStatus(els.callStatus, "Connected");
+      if (data.status === "active") {
         clearRingingTimeout();
         stopRingback();
         hideOutgoingModal();
-        showCallModal();
+      }
+
+      if (data.answer && !state.pc.currentRemoteDescription) {
+        try {
+          await state.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+          setStatus(els.callStatus, "Connected");
+          clearRingingTimeout();
+          stopRingback();
+          hideOutgoingModal();
+          showCallModal();
+        } catch (err) {
+          setStatus(els.callStatus, `Connection setup delayed: ${err?.message || "retrying..."}`);
+        }
       }
 
       if (data.status === "ended" || data.status === "rejected") {
@@ -1314,6 +1324,14 @@ function startRingingTimeout(callId, targetId) {
   state.ringingTimeoutTimer = window.setTimeout(async () => {
     if (!state.currentCallId || state.currentCallId !== callId) return;
     try {
+      const callRef = doc(db, "calls", callId);
+      const snap = await getDoc(callRef);
+      if (!snap.exists()) return;
+      const data = snap.data() || {};
+      if (data.status !== "ringing" || data.answer) {
+        return;
+      }
+
       await updateDoc(doc(db, "calls", callId), {
         status: "ended",
         endedAt: serverTimestamp(),
@@ -1323,7 +1341,7 @@ function startRingingTimeout(callId, targetId) {
     } catch {
       // Ignore timeout update errors.
     }
-  }, 10000);
+  }, 35000);
 }
 
 function clearRingingTimeout() {
