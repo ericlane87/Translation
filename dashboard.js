@@ -947,7 +947,7 @@ function isLikelyInsecureOrigin() {
 
 function setupDataChannel(channel) {
   channel.onopen = () => {
-    setStatus(els.callStatus, "Connected • Voice translation active");
+    setStatus(els.callStatus, "Connected • Translation captions active");
   };
   channel.onmessage = async (event) => {
     try {
@@ -960,7 +960,6 @@ function setupDataChannel(channel) {
       const translated = await translateText(payload.original, from, incomingTarget);
 
       appendFeed(sender, `${payload.original} -> ${translated}`);
-      speak(translated, incomingTarget);
     } catch {
       // ignore bad payload
     }
@@ -1213,9 +1212,19 @@ function stopRingtone() {
 
 function appendFeed(sender, text) {
   if (!els.translationFeed) return;
-  const p = document.createElement("p");
+  const key = captionKeyForSender(sender);
+  let p = els.translationFeed.querySelector(`[data-caption-key="${key}"]`);
+  if (!p) {
+    p = document.createElement("p");
+    p.dataset.captionKey = key;
+    els.translationFeed.appendChild(p);
+  }
   p.textContent = `${sender}: ${text}`;
-  els.translationFeed.prepend(p);
+}
+
+function captionKeyForSender(sender) {
+  const normalized = String(sender || "remote").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+  return normalized || "remote";
 }
 
 async function performTranslationFromText(spoken) {
@@ -1713,13 +1722,6 @@ async function translateText(text, from, to) {
   } catch {
     return text;
   }
-}
-
-function speak(text, lang) {
-  if (!window.speechSynthesis || !text) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang === "es" ? "es-ES" : "en-US";
-  window.speechSynthesis.speak(utterance);
 }
 
 function resolveIncomingTargetLanguage(sourceLang) {
