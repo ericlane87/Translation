@@ -166,6 +166,8 @@ const state = {
   turnIceServers: null,
   turnExpiresAtMs: 0,
   turnFetchPromise: null,
+  turnDisabledUntilMs: 0,
+  turnFailureNotified: false,
   answerApplyRetryTimer: null,
   presenceHeartbeatTimer: null,
 };
@@ -1749,6 +1751,13 @@ async function ensureTurnIceServers() {
   if (state.turnIceServers?.length && now < state.turnExpiresAtMs - 60_000) {
     return state.turnIceServers;
   }
+  if (now < state.turnDisabledUntilMs) {
+    if (!state.turnIceServers?.length) {
+      state.turnIceServers = defaultIceServers;
+      state.turnExpiresAtMs = state.turnDisabledUntilMs;
+    }
+    return state.turnIceServers;
+  }
 
   if (state.turnFetchPromise) {
     return state.turnFetchPromise;
@@ -1767,15 +1776,30 @@ async function ensureTurnIceServers() {
     }
     state.turnIceServers = servers;
     state.turnExpiresAtMs = Math.max(now + 60_000, Number(data?.expiresAt || 0) * 1000);
+    state.turnFailureNotified = false;
     return servers;
   })();
 
   try {
     return await state.turnFetchPromise;
-  } catch {
+  } catch (err) {
+    const msg = String(err?.message || "").toLowerCase();
+    const likelyNetworkOrCors =
+      msg.includes("failed to fetch") ||
+      msg.includes("cors") ||
+      msg.includes("networkerror") ||
+      msg.includes("certificate") ||
+      msg.includes("ssl");
+
+    // Back off retries after CORS/TLS/network failures from remote TURN endpoints.
+    state.turnDisabledUntilMs = now + (likelyNetworkOrCors ? 10 * 60_000 : 2 * 60_000);
     if (!state.turnIceServers?.length) {
       state.turnIceServers = defaultIceServers;
       state.turnExpiresAtMs = now + 120_000;
+    }
+    if (!state.turnFailureNotified) {
+      setStatus(els.callStatus, "TURN unavailable right now. Using fallback connectivity.");
+      state.turnFailureNotified = true;
     }
     return state.turnIceServers;
   } finally {
