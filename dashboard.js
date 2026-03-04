@@ -600,15 +600,15 @@ async function answerIncomingCall() {
   const callRef = doc(db, "calls", state.incomingCall.id);
 
   try {
+    hideIncomingModal();
+    hideOutgoingModal();
+    showCallModal();
+    setStatus(els.callStatus, "Connecting...");
     stopRingtone();
     closeIncomingNotification();
     await setupPeer(false);
     state.remotePeerId = state.incomingCall.callerId || "Remote";
     setRemoteAvatarLabel(state.remotePeerId);
-    hideIncomingModal();
-    hideOutgoingModal();
-    showCallModal();
-    setStatus(els.callStatus, "Connecting...");
 
     const offerCandidatesRef = collection(db, "calls", state.incomingCall.id, "offerCandidates");
     const answerCandidatesRef = collection(db, "calls", state.incomingCall.id, "answerCandidates");
