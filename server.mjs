@@ -29,7 +29,7 @@ const port = Number(process.env.PORT || 4010);
 const firebaseProjectId = process.env.FIREBASE_PROJECT_ID || '';
 const nodeEnv = process.env.NODE_ENV || 'development';
 const isProduction = nodeEnv === 'production';
-const corsOrigins = parseOrigins(process.env.CORS_ORIGIN || '');
+const corsOrigins = buildCorsOrigins(process.env.CORS_ORIGIN || '');
 const redisRestUrl = process.env.UPSTASH_REDIS_REST_URL || '';
 const redisRestToken = process.env.UPSTASH_REDIS_REST_TOKEN || '';
 const hasRedisRateStore = Boolean(redisRestUrl && redisRestToken);
@@ -243,6 +243,16 @@ function parseOrigins(value) {
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+function buildCorsOrigins(value) {
+  const configured = parseOrigins(value);
+  const defaults = [
+    'https://ericlane87.github.io',
+    'http://localhost:4010',
+    'http://127.0.0.1:4010',
+  ];
+  return Array.from(new Set([...configured, ...defaults]));
 }
 
 function parseTurnUrls(value) {

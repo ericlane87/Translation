@@ -68,10 +68,12 @@ For testing with someone in another country, host backend APIs separately and po
    - `API_BASE_URL: "https://your-backend-domain"`
 4. On backend, allow your GitHub Pages origin in `CORS_ORIGIN`:
    - `https://<your-username>.github.io`
+   - for this repo: `https://ericlane87.github.io`
 5. Enable GitHub Pages for this repo (Settings -> Pages -> Source: GitHub Actions).
 6. Test from two devices/networks using the Pages URL.
 
 Note: cross-country WebRTC reliability usually requires a public TURN server; STUN-only often fails across NAT/firewalls.
+Note: avoid temporary/self-signed tunnel certs for `API_BASE_URL`; browsers will block TURN credential fetch if TLS is invalid.
 Note: this repo includes `.github/workflows/pages.yml` to deploy static files from `main` via GitHub Actions.
 
 ## TURN Deployment (coturn)
