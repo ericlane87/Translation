@@ -111,6 +111,7 @@ const els = {
   answerBtn: byId("answerBtn"),
   rejectBtn: byId("rejectBtn"),
   endCallBtn: byId("endCallBtn"),
+  enablePermissionsBtn: byId("enablePermissionsBtn"),
   incomingStatus: byId("incomingStatus"),
   callStatus: byId("callStatus"),
   callLogList: byId("callLogList"),
@@ -188,6 +189,11 @@ els.devPreviewBtn.addEventListener("click", toggleDevCallPreview);
 els.answerBtn.addEventListener("click", answerIncomingCall);
 els.rejectBtn.addEventListener("click", rejectIncomingCall);
 els.endCallBtn.addEventListener("click", endCall);
+els.enablePermissionsBtn?.addEventListener("click", () => {
+  requestMediaPermissions().catch((err) => {
+    setStatus(els.callStatus, `Permission request failed: ${err?.message || "unknown error"}`);
+  });
+});
 els.toggleMuteBtn.addEventListener("click", toggleMute);
 els.toggleCameraBtn.addEventListener("click", () => {
   toggleCamera().catch((err) => {
@@ -997,6 +1003,38 @@ async function getLocalMediaStream() {
   }
 }
 
+async function requestMediaPermissions() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error("Browser does not support camera/microphone access.");
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    stream.getTracks().forEach((t) => t.stop());
+    state.audioUnlockHintShown = false;
+    setStatus(els.callStatus, "Camera and microphone permissions are enabled.");
+  } catch (err) {
+    const name = String(err?.name || "");
+    const message = String(err?.message || "").toLowerCase();
+    const denied =
+      name === "NotAllowedError" ||
+      message.includes("permission") ||
+      message.includes("denied") ||
+      message.includes("not allowed");
+
+    if (!denied) {
+      throw err;
+    }
+
+    const help = isIosDevice()
+      ? "Permission denied. On iPhone: Settings > Chrome > Camera/Microphone = Allow, then reopen Chrome and retry."
+      : "Permission denied. Enable Camera/Microphone for this site in browser settings, then retry.";
+
+    setStatus(els.callStatus, help);
+    window.alert(help);
+  }
+}
+
 function isIosDevice() {
   const ua = String(navigator.userAgent || "");
   return /iPhone|iPad|iPod/i.test(ua);
@@ -1021,8 +1059,14 @@ function setupDataChannel(channel) {
       const from = payload.from === "es" ? "es" : "en";
       const incomingTarget = resolveIncomingTargetLanguage(from);
       const translated = await translateText(payload.original, from, incomingTarget);
-
-      appendFeed(sender, `${payload.original} -> ${translated}`);
+      const rendered = translated || "[translation unavailable]";
+      appendFeed(sender, `${payload.original} -> ${rendered}`);
+      if (!translated) {
+        setStatus(
+          els.callStatus,
+          "Live translation unavailable right now (backend offline). Captions will show original text."
+        );
+      }
     } catch {
       // ignore bad payload
     }
@@ -1874,9 +1918,11 @@ async function translateText(text, from, to) {
     });
     if (!resp.ok) throw new Error("Translation request failed");
     const data = await resp.json();
-    return String(data?.translatedText || text);
+    const out = String(data?.translatedText || "").trim();
+    if (!out) return null;
+    return out;
   } catch {
-    return text;
+    return null;
   }
 }
 
