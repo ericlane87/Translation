@@ -668,10 +668,8 @@ async function answerIncomingCall() {
       }
     };
 
-    const current = await getDoc(callRef);
-    const data = current.data();
-
-    await state.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+    const offer = await waitForOffer(callRef, 7000);
+    await state.pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await state.pc.createAnswer();
     await state.pc.setLocalDescription(answer);
 
@@ -723,7 +721,8 @@ async function answerIncomingCall() {
     if (reason === "receiver_media_denied") {
       window.alert("Could not join call: Camera/Microphone permission was denied on this device.");
     } else {
-      window.alert("Could not join call. Please try again.");
+      const details = String(err?.message || "unknown error");
+      window.alert(`Could not join call. ${details}`);
     }
     await teardownCall();
   }
@@ -870,6 +869,19 @@ function classifyAnswerFailureReason(err) {
     msg.includes("blocked media");
   if (permissionDenied) return "receiver_media_denied";
   return "receiver_answer_failed";
+}
+
+async function waitForOffer(callRef, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const snap = await getDoc(callRef);
+    const data = snap.data() || {};
+    if (data.offer?.type && data.offer?.sdp) {
+      return data.offer;
+    }
+    await sleep(250);
+  }
+  throw new Error("Caller offer not ready yet. Please try again.");
 }
 
 function maybeShowCallerOutcomePopup(targetId, data) {
@@ -1654,6 +1666,10 @@ function toMillis(timestamp) {
   if (typeof timestamp.toMillis === "function") return timestamp.toMillis();
   if (timestamp.seconds) return timestamp.seconds * 1000;
   return 0;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function formatTime(timestamp) {
