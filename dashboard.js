@@ -170,6 +170,8 @@ const state = {
   turnFailureNotified: false,
   answerApplyRetryTimer: null,
   presenceHeartbeatTimer: null,
+  audioUnlocked: false,
+  audioUnlockHintShown: false,
 };
 const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -195,6 +197,9 @@ els.remoteVideo.addEventListener("pause", updateRemoteAvatarVisibility);
 document.addEventListener("visibilitychange", () => {
   syncPresence().catch(() => {});
 });
+document.addEventListener("pointerdown", unlockAudioContextFromGesture, { passive: true });
+document.addEventListener("touchstart", unlockAudioContextFromGesture, { passive: true });
+document.addEventListener("keydown", unlockAudioContextFromGesture, { passive: true });
 window.addEventListener("online", () => {
   syncPresence().catch(() => {});
 });
@@ -1192,7 +1197,11 @@ function startRingtone() {
   try {
     state.ringtoneCtx = state.ringtoneCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (state.ringtoneCtx.state === "suspended") {
-      state.ringtoneCtx.resume().catch(() => {});
+      if (!state.audioUnlockHintShown) {
+        setStatus(els.callStatus, "Tap anywhere once to enable ringtone audio on this device.");
+        state.audioUnlockHintShown = true;
+      }
+      return;
     }
 
     const ringOnce = () => {
@@ -1272,7 +1281,11 @@ function startRingback() {
   try {
     state.ringtoneCtx = state.ringtoneCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (state.ringtoneCtx.state === "suspended") {
-      state.ringtoneCtx.resume().catch(() => {});
+      if (!state.audioUnlockHintShown) {
+        setStatus(els.callStatus, "Tap anywhere once to enable call tones.");
+        state.audioUnlockHintShown = true;
+      }
+      return;
     }
 
     const ring = () => {
@@ -1671,6 +1684,20 @@ function toMillis(timestamp) {
 
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function unlockAudioContextFromGesture() {
+  try {
+    state.ringtoneCtx = state.ringtoneCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (state.ringtoneCtx.state === "suspended") {
+      state.ringtoneCtx.resume().catch(() => {});
+    }
+    if (state.ringtoneCtx.state === "running") {
+      state.audioUnlocked = true;
+    }
+  } catch {
+    // Ignore gesture unlock failures.
+  }
 }
 
 function formatTime(timestamp) {
