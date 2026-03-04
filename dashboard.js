@@ -809,10 +809,15 @@ async function setupPeer(isCaller) {
   await ensureTurnIceServers();
 
   state.localStream = await getLocalMediaStream();
+  state.micMuted = false;
+  state.cameraOff = false;
+  if (els.toggleMuteBtn) els.toggleMuteBtn.textContent = "Mute";
+  if (els.toggleCameraBtn) els.toggleCameraBtn.textContent = "Camera Off";
   state.remoteStream = new MediaStream();
   state.remoteAudioStream = new MediaStream();
 
   els.localVideo.srcObject = state.localStream;
+  els.localVideo.play().catch(() => {});
   els.remoteVideo.srcObject = state.remoteStream;
   if (els.remoteAudio) {
     els.remoteAudio.srcObject = state.remoteAudioStream;
@@ -938,14 +943,15 @@ function maybeShowCallerOutcomePopup(targetId, data) {
 }
 
 async function getLocalMediaStream() {
+  const highQualityVideo = {
+    facingMode: "user",
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  };
   try {
     return await navigator.mediaDevices.getUserMedia({
       audio: true,
-      video: {
-        facingMode: "user",
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
+      video: highQualityVideo,
     });
   } catch (err) {
     const name = String(err?.name || "");
@@ -956,8 +962,13 @@ async function getLocalMediaStream() {
       message.toLowerCase().includes("not allowed") ||
       message.toLowerCase().includes("permission");
 
-    if (!maybePermissionIssue) {
-      throw err;
+    // iPhone/older devices can reject stricter constraints even when camera is available.
+    try {
+      return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    } catch (relaxedErr) {
+      if (!maybePermissionIssue) {
+        throw relaxedErr;
+      }
     }
 
     const iosInsecureContext = isIosDevice() && isLikelyInsecureOrigin();
