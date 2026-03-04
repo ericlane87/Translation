@@ -203,7 +203,8 @@ window.addEventListener("beforeunload", () => {
   markPresenceBestEffort("background");
 });
 els.remoteVideo.muted = true;
-els.remoteVideo.volume = 0;
+els.remoteVideo.muted = false;
+els.remoteVideo.volume = 1;
 resetAllModals();
 applyDashboardLocale();
 
@@ -521,6 +522,7 @@ async function startCallById(targetId) {
   }
 
   try {
+    primeRemotePlayback();
     const targetSnap = await getDoc(doc(db, "callIds", targetId));
     if (!targetSnap.exists()) {
       setStatus(els.callStatus, "Recipient ID not found");
@@ -639,6 +641,7 @@ async function answerIncomingCall() {
   const callRef = doc(db, "calls", state.incomingCall.id);
 
   try {
+    primeRemotePlayback();
     hideIncomingModal();
     hideOutgoingModal();
     showCallModal();
@@ -806,6 +809,7 @@ async function setupPeer(isCaller) {
 
   state.pc.ontrack = (event) => {
     event.streams[0].getTracks().forEach((track) => state.remoteStream.addTrack(track));
+    els.remoteVideo.play().catch(() => {});
     if (event.track.kind === "video") {
       event.track.onmute = updateRemoteAvatarVisibility;
       event.track.onunmute = updateRemoteAvatarVisibility;
@@ -971,6 +975,13 @@ function getOpenDataChannels() {
   }
 
   return channels;
+}
+
+function primeRemotePlayback() {
+  if (!els.remoteVideo) return;
+  els.remoteVideo.muted = false;
+  els.remoteVideo.volume = 1;
+  els.remoteVideo.play().catch(() => {});
 }
 
 function toggleMute() {
