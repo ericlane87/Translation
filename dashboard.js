@@ -116,6 +116,7 @@ const els = {
   callLogList: byId("callLogList"),
   localVideo: byId("localVideo"),
   remoteVideo: byId("remoteVideo"),
+  remoteAudio: byId("remoteAudio"),
   remoteAvatar: byId("remoteAvatar"),
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
@@ -129,6 +130,7 @@ const state = {
   incomingCall: null,
   localStream: null,
   remoteStream: null,
+  remoteAudioStream: null,
   pc: null,
   dataChannel: null,
   micMuted: false,
@@ -210,8 +212,11 @@ window.addEventListener("beforeunload", () => {
   markPresenceBestEffort("background");
 });
 els.remoteVideo.muted = true;
-els.remoteVideo.muted = false;
-els.remoteVideo.volume = 1;
+els.remoteVideo.volume = 0;
+if (els.remoteAudio) {
+  els.remoteAudio.muted = false;
+  els.remoteAudio.volume = 1;
+}
 resetAllModals();
 applyDashboardLocale();
 
@@ -805,9 +810,13 @@ async function setupPeer(isCaller) {
 
   state.localStream = await getLocalMediaStream();
   state.remoteStream = new MediaStream();
+  state.remoteAudioStream = new MediaStream();
 
   els.localVideo.srcObject = state.localStream;
   els.remoteVideo.srcObject = state.remoteStream;
+  if (els.remoteAudio) {
+    els.remoteAudio.srcObject = state.remoteAudioStream;
+  }
 
   state.pc = new RTCPeerConnection({
     iceServers: state.turnIceServers || defaultIceServers,
@@ -815,8 +824,20 @@ async function setupPeer(isCaller) {
   state.localStream.getTracks().forEach((track) => state.pc.addTrack(track, state.localStream));
 
   state.pc.ontrack = (event) => {
-    event.streams[0].getTracks().forEach((track) => state.remoteStream.addTrack(track));
-    els.remoteVideo.play().catch(() => {});
+    const track = event.track;
+    if (track.kind === "video") {
+      if (!state.remoteStream.getTracks().some((t) => t.id === track.id)) {
+        state.remoteStream.addTrack(track);
+      }
+    } else if (track.kind === "audio") {
+      if (
+        state.remoteAudioStream &&
+        !state.remoteAudioStream.getTracks().some((t) => t.id === track.id)
+      ) {
+        state.remoteAudioStream.addTrack(track);
+      }
+    }
+    playRemoteMedia();
     if (event.track.kind === "video") {
       event.track.onmute = updateRemoteAvatarVisibility;
       event.track.onunmute = updateRemoteAvatarVisibility;
@@ -918,7 +939,14 @@ function maybeShowCallerOutcomePopup(targetId, data) {
 
 async function getLocalMediaStream() {
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    return await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: {
+        facingMode: "user",
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    });
   } catch (err) {
     const name = String(err?.name || "");
     const message = String(err?.message || "");
@@ -997,10 +1025,20 @@ function getOpenDataChannels() {
 }
 
 function primeRemotePlayback() {
-  if (!els.remoteVideo) return;
-  els.remoteVideo.muted = false;
-  els.remoteVideo.volume = 1;
-  els.remoteVideo.play().catch(() => {});
+  playRemoteMedia();
+}
+
+function playRemoteMedia() {
+  if (els.remoteVideo) {
+    els.remoteVideo.muted = true;
+    els.remoteVideo.volume = 0;
+    els.remoteVideo.play().catch(() => {});
+  }
+  if (els.remoteAudio) {
+    els.remoteAudio.muted = false;
+    els.remoteAudio.volume = 1;
+    els.remoteAudio.play().catch(() => {});
+  }
 }
 
 function toggleMute() {
@@ -1029,6 +1067,9 @@ async function teardownCall() {
   if (state.remoteStream) {
     state.remoteStream.getTracks().forEach((t) => t.stop());
   }
+  if (state.remoteAudioStream) {
+    state.remoteAudioStream.getTracks().forEach((t) => t.stop());
+  }
 
   if (state.pc) {
     state.pc.close();
@@ -1040,6 +1081,7 @@ async function teardownCall() {
 
   state.localStream = null;
   state.remoteStream = null;
+  state.remoteAudioStream = null;
   state.pc = null;
   state.dataChannel = null;
   state.currentCallId = null;
@@ -1053,6 +1095,9 @@ async function teardownCall() {
 
   els.localVideo.srcObject = null;
   els.remoteVideo.srcObject = null;
+  if (els.remoteAudio) {
+    els.remoteAudio.srcObject = null;
+  }
   stopAutoTranslate();
   stopRingback();
   hideOutgoingModal();
@@ -1649,7 +1694,7 @@ function clearRingingTimeout() {
 }
 
 function setRemoteAvatarLabel(peerId) {
-  const label = (peerId || "Remote").slice(0, 18);
+  const label = formatPeerDisplayName(peerId).slice(0, 18);
   els.remoteAvatar.textContent = label;
 }
 
@@ -1684,6 +1729,16 @@ function toMillis(timestamp) {
 
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function formatPeerDisplayName(peerId) {
+  const raw = String(peerId || "").trim();
+  if (!raw) return "Remote";
+
+  const contact = state.contacts.find((c) => normalizeCallId(c.callId || "") === normalizeCallId(raw));
+  const source = String(contact?.name || raw).trim();
+  const first = source.split(/[\s._-]+/).filter(Boolean)[0] || source;
+  return first.charAt(0).toUpperCase() + first.slice(1);
 }
 
 function unlockAudioContextFromGesture() {
