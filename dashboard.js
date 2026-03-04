@@ -605,6 +605,10 @@ async function answerIncomingCall() {
     await setupPeer(false);
     state.remotePeerId = state.incomingCall.callerId || "Remote";
     setRemoteAvatarLabel(state.remotePeerId);
+    hideIncomingModal();
+    hideOutgoingModal();
+    showCallModal();
+    setStatus(els.callStatus, "Connecting...");
 
     const offerCandidatesRef = collection(db, "calls", state.incomingCall.id, "offerCandidates");
     const answerCandidatesRef = collection(db, "calls", state.incomingCall.id, "answerCandidates");
@@ -644,6 +648,9 @@ async function answerIncomingCall() {
     state.unsubCall = onSnapshot(callRef, async (snap) => {
       const d = snap.data();
       if (!d) return;
+      if (d.status === "active") {
+        showCallModal();
+      }
       if (d.status === "ended" || d.status === "rejected") {
         setStatus(els.callStatus, `Call ${d.status}`);
         await teardownCall();
@@ -651,9 +658,6 @@ async function answerIncomingCall() {
     });
 
     setStatus(els.callStatus, "Connected");
-    hideIncomingModal();
-    hideOutgoingModal();
-    showCallModal();
   } catch (err) {
     setStatus(els.callStatus, `Answer failed: ${err.message}`);
     await teardownCall();
