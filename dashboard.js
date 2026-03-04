@@ -809,11 +809,37 @@ async function getLocalMediaStream() {
       throw err;
     }
 
+    const iosInsecureContext = isIosDevice() && isLikelyInsecureOrigin();
+    if (iosInsecureContext) {
+      setStatus(
+        els.callStatus,
+        "iPhone media blocked: use HTTPS (or localhost) and allow Camera/Microphone in browser settings."
+      );
+    }
+
     // Mobile browsers often block camera first; keep call usable with audio-only.
-    const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    setStatus(els.callStatus, "Camera unavailable. Continuing with audio only.");
-    return audioOnly;
+    try {
+      const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      setStatus(els.callStatus, "Camera unavailable. Continuing with audio only.");
+      return audioOnly;
+    } catch (audioErr) {
+      if (iosInsecureContext) {
+        throw new Error("iPhone blocked media on insecure origin. Open this app over HTTPS and try again.");
+      }
+      throw audioErr;
+    }
   }
+}
+
+function isIosDevice() {
+  const ua = String(navigator.userAgent || "");
+  return /iPhone|iPad|iPod/i.test(ua);
+}
+
+function isLikelyInsecureOrigin() {
+  if (window.isSecureContext) return false;
+  const host = String(window.location.hostname || "").toLowerCase();
+  return host !== "localhost" && host !== "127.0.0.1" && host !== "::1" && host !== "[::1]";
 }
 
 function setupDataChannel(channel) {
