@@ -11,7 +11,7 @@
       <aside class="sidebar glass">
         <div>
           <p class="eyebrow">VoiceBridge</p>
-          <h1>Calls</h1>
+          <h1 id="dashTitle">Calls</h1>
         </div>
         <div class="profile-block">
           <p id="userEmail" class="muted">-</p>
@@ -22,8 +22,8 @@
 
       <main class="dash-main">
         <section class="panel glass span-2" id="setupPanel" style="display:none;">
-          <h2>Finish Profile Setup</h2>
-          <p class="muted">Choose your unique call ID to activate calling.</p>
+          <h2 id="setupTitle">Finish Profile Setup</h2>
+          <p id="setupHelp" class="muted">Choose your unique call ID to activate calling.</p>
           <div class="dial-row">
             <input id="setupCallIdInput" type="text" placeholder="Choose call ID (e.g. eric-100)" />
             <button id="setupProfileBtn" class="btn">Save ID</button>
@@ -31,8 +31,8 @@
           <p id="setupStatus" class="status-line"></p>
         </section>
 
-        <section class="panel glass">
-          <h2>Start a Call</h2>
+        <section class="panel glass span-2">
+          <h2 id="callSectionTitle">Start a Call</h2>
           <div class="dial-row">
             <input id="dialIdInput" type="text" placeholder="Enter recipient call ID" />
             <button id="callBtn" class="btn">Call</button>
@@ -43,27 +43,18 @@
         </section>
 
         <section class="panel glass span-2">
-          <h2>Group Rooms</h2>
-          <p class="muted">Create a share link so multiple people can join the same call room.</p>
+          <h2 id="contactsTitle">Contacts</h2>
           <div class="dial-row">
-            <button id="createRoomBtn" class="btn">Create Room</button>
-            <button id="copyRoomLinkBtn" class="btn ghost">Copy Link</button>
+            <input id="contactNameInput" type="text" placeholder="Contact name (e.g. Michael)" />
+            <input id="contactCallIdInput" type="text" placeholder="Contact call ID (e.g. michael-01)" />
+            <button id="addContactBtn" class="btn">Save Contact</button>
           </div>
-          <label>
-            Active room link
-            <input id="roomLinkInput" type="text" readonly placeholder="Create or join a room to get a link" />
-          </label>
-          <div class="dial-row">
-            <input id="joinRoomInput" type="text" placeholder="Paste room link or room ID" />
-            <button id="joinRoomBtn" class="btn">Join Room</button>
-            <button id="leaveRoomBtn" class="btn danger">Leave Room</button>
-          </div>
-          <p id="roomStatus" class="status-line">Not in a room</p>
-          <p id="roomParticipants" class="status-line">Participants: -</p>
+          <p id="contactsStatus" class="status-line">Add a contact to call faster.</p>
+          <div id="contactsList" class="contacts-list"></div>
         </section>
 
-        <section class="panel glass">
-          <h2>Call History</h2>
+        <section class="panel glass span-2">
+          <h2 id="historyTitle">Call History</h2>
           <div id="callLogList" class="log-list"></div>
         </section>
 
@@ -113,7 +104,6 @@
           <h3>Live Translation Captions</h3>
           <div id="translationFeed"></div>
         </div>
-        <div id="remoteAudioBucket" class="hidden"></div>
       </div>
     </div>
 

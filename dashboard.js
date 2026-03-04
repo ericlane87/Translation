@@ -6,7 +6,6 @@ import {
   collection,
   addDoc,
   doc,
-  deleteDoc,
   getDoc,
   onSnapshot,
   query,
@@ -20,14 +19,78 @@ import { auth, db } from "./firebase-client.js";
 
 const runtimeConfig = window.VOICEBRIDGE_CONFIG || {};
 const apiBaseUrl = normalizeApiBaseUrl(String(runtimeConfig.API_BASE_URL || ""));
+const locale = {
+  code: "en",
+};
+
+const i18n = {
+  en: {
+    dashTitle: "Calls",
+    logout: "Log Out",
+    setupTitle: "Finish Profile Setup",
+    setupHelp: "Choose your unique call ID to activate calling.",
+    setupPlaceholder: "Choose call ID (e.g. eric-100)",
+    saveId: "Save ID",
+    callSectionTitle: "Start a Call",
+    dialPlaceholder: "Enter recipient call ID",
+    callBtn: "Call",
+    devOpen: "Open In-Call (Dev)",
+    devClose: "Close In-Call (Dev)",
+    incomingIdle: "No incoming calls",
+    callIdle: "Idle",
+    contactsTitle: "Contacts",
+    contactNamePlaceholder: "Contact name (e.g. Michael)",
+    contactCallIdPlaceholder: "Contact call ID (e.g. michael-01)",
+    saveContact: "Save Contact",
+    contactsHint: "Add a contact to call faster.",
+    historyTitle: "Call History",
+    contactsEmpty: "No contacts yet",
+    contactCall: "Call",
+    contactAdded: "Contact saved.",
+    contactMissing: "Contact ID not found in database.",
+    contactInvalid: "Enter a valid contact call ID.",
+    contactNameRequired: "Enter a contact name.",
+  },
+  es: {
+    dashTitle: "Llamadas",
+    logout: "Cerrar sesión",
+    setupTitle: "Completa tu perfil",
+    setupHelp: "Elige tu ID único para activar llamadas.",
+    setupPlaceholder: "Elige ID (ej. eric-100)",
+    saveId: "Guardar ID",
+    callSectionTitle: "Iniciar llamada",
+    dialPlaceholder: "Ingresa el ID del destinatario",
+    callBtn: "Llamar",
+    devOpen: "Abrir llamada (Dev)",
+    devClose: "Cerrar llamada (Dev)",
+    incomingIdle: "Sin llamadas entrantes",
+    callIdle: "En espera",
+    contactsTitle: "Contactos",
+    contactNamePlaceholder: "Nombre del contacto (ej. Michael)",
+    contactCallIdPlaceholder: "ID del contacto (ej. michael-01)",
+    saveContact: "Guardar contacto",
+    contactsHint: "Agrega un contacto para llamar más rápido.",
+    historyTitle: "Historial de llamadas",
+    contactsEmpty: "Aún no hay contactos",
+    contactCall: "Llamar",
+    contactAdded: "Contacto guardado.",
+    contactMissing: "El ID del contacto no existe en la base de datos.",
+    contactInvalid: "Ingresa un ID de contacto válido.",
+    contactNameRequired: "Ingresa un nombre de contacto.",
+  },
+};
 
 const els = {
   userEmail: byId("userEmail"),
   myIdLabel: byId("myIdLabel"),
+  dashTitle: byId("dashTitle"),
   setupPanel: byId("setupPanel"),
+  setupTitle: byId("setupTitle"),
+  setupHelp: byId("setupHelp"),
   setupCallIdInput: byId("setupCallIdInput"),
   setupProfileBtn: byId("setupProfileBtn"),
   setupStatus: byId("setupStatus"),
+  callSectionTitle: byId("callSectionTitle"),
   incomingModal: byId("incomingModal"),
   incomingCallerLabel: byId("incomingCallerLabel"),
   outgoingModal: byId("outgoingModal"),
@@ -38,13 +101,18 @@ const els = {
   dialIdInput: byId("dialIdInput"),
   callBtn: byId("callBtn"),
   devPreviewBtn: byId("devPreviewBtn"),
+  contactsTitle: byId("contactsTitle"),
+  historyTitle: byId("historyTitle"),
+  contactNameInput: byId("contactNameInput"),
+  contactCallIdInput: byId("contactCallIdInput"),
+  addContactBtn: byId("addContactBtn"),
+  contactsStatus: byId("contactsStatus"),
+  contactsList: byId("contactsList"),
   answerBtn: byId("answerBtn"),
   rejectBtn: byId("rejectBtn"),
   endCallBtn: byId("endCallBtn"),
   incomingStatus: byId("incomingStatus"),
   callStatus: byId("callStatus"),
-  roomStatus: byId("roomStatus"),
-  roomParticipants: byId("roomParticipants"),
   callLogList: byId("callLogList"),
   localVideo: byId("localVideo"),
   remoteVideo: byId("remoteVideo"),
@@ -52,13 +120,6 @@ const els = {
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
   translationFeed: byId("translationFeed"),
-  createRoomBtn: byId("createRoomBtn"),
-  copyRoomLinkBtn: byId("copyRoomLinkBtn"),
-  roomLinkInput: byId("roomLinkInput"),
-  joinRoomInput: byId("joinRoomInput"),
-  joinRoomBtn: byId("joinRoomBtn"),
-  leaveRoomBtn: byId("leaveRoomBtn"),
-  remoteAudioBucket: byId("remoteAudioBucket"),
 };
 
 const state = {
@@ -74,12 +135,14 @@ const state = {
   cameraOff: false,
   logsCaller: [],
   logsReceiver: [],
+  contacts: [],
   unsubIncoming: null,
   unsubCall: null,
   unsubCandidatesA: null,
   unsubCandidatesB: null,
   unsubLogsA: null,
   unsubLogsB: null,
+  unsubContacts: null,
   activeIncomingAlertId: null,
   ringtoneCtx: null,
   ringtoneTimer: null,
@@ -93,13 +156,6 @@ const state = {
   lastTranscript: "",
   devCallPreview: false,
   ringingTimeoutTimer: null,
-  currentRoomId: null,
-  roomRole: null,
-  roomPeers: new Map(),
-  roomParticipants: new Map(),
-  unsubRoomParticipants: null,
-  unsubRoomSignals: null,
-  participantDocRef: null,
   mediaReady: false,
   vadContext: null,
   vadSource: null,
@@ -127,16 +183,14 @@ els.toggleMuteBtn.addEventListener("click", toggleMute);
 els.toggleCameraBtn.addEventListener("click", toggleCamera);
 els.setupProfileBtn.addEventListener("click", setupMissingProfileFromForm);
 els.cancelOutgoingBtn.addEventListener("click", cancelOutgoingCall);
-els.createRoomBtn?.addEventListener("click", createRoom);
-els.copyRoomLinkBtn?.addEventListener("click", copyRoomLink);
-els.joinRoomBtn?.addEventListener("click", joinRoomFromInput);
-els.leaveRoomBtn?.addEventListener("click", leaveCurrentRoom);
+els.addContactBtn?.addEventListener("click", saveContact);
 els.remoteVideo.addEventListener("loadeddata", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("playing", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("pause", updateRemoteAvatarVisibility);
 els.remoteVideo.muted = true;
 els.remoteVideo.volume = 0;
 resetAllModals();
+applyDashboardLocale();
 
 onAuthStateChanged(auth, async (user) => {
   await cleanupAuthScoped();
@@ -161,6 +215,8 @@ onAuthStateChanged(auth, async (user) => {
     state.profile = profileSnap.data();
     els.setupPanel.style.display = "none";
   }
+  locale.code = state.profile?.language === "es" ? "es" : "en";
+  applyDashboardLocale();
   els.myIdLabel.textContent = `ID: ${state.profile.callId}`;
 
   ensureTurnIceServers().catch(() => {
@@ -169,7 +225,7 @@ onAuthStateChanged(auth, async (user) => {
   ensureNotificationPermission();
   watchIncomingCalls();
   watchCallLogs();
-  maybeJoinRoomFromUrl();
+  watchContacts();
 });
 
 async function setupMissingProfileFromForm() {
@@ -205,6 +261,9 @@ async function setupMissingProfileFromForm() {
     els.myIdLabel.textContent = `ID: ${callId}`;
     els.setupPanel.style.display = "none";
     setStatus(els.callStatus, "Profile ready. You can call now.");
+    locale.code = state.profile?.language === "es" ? "es" : "en";
+    applyDashboardLocale();
+    watchContacts();
     return;
   } catch (err) {
     // Fallback write path.
@@ -227,6 +286,9 @@ async function setupMissingProfileFromForm() {
       els.myIdLabel.textContent = `ID: ${callId}`;
       els.setupPanel.style.display = "none";
       setStatus(els.callStatus, "Profile ready. You can call now.");
+      locale.code = state.profile?.language === "es" ? "es" : "en";
+      applyDashboardLocale();
+      watchContacts();
       return;
     } catch (err2) {
       setStatus(els.setupStatus, `Profile setup failed: ${err2.message}`);
@@ -239,15 +301,6 @@ function watchIncomingCalls() {
   const q = query(collection(db, "calls"), where("receiverUid", "==", state.user.uid));
 
   state.unsubIncoming = onSnapshot(q, (snap) => {
-    if (state.currentRoomId) {
-      state.incomingCall = null;
-      setStatus(els.incomingStatus, "In room mode");
-      hideIncomingModal();
-      stopRingtone();
-      closeIncomingNotification();
-      return;
-    }
-
     const previousIncomingId = state.activeIncomingAlertId;
     const ringing = snap.docs.find((d) => d.data().status === "ringing");
     state.incomingCall = ringing ? { id: ringing.id, ...ringing.data() } : null;
@@ -288,6 +341,99 @@ function watchCallLogs() {
   });
 }
 
+function watchContacts() {
+  if (!state.user) return;
+  if (state.unsubContacts) state.unsubContacts();
+
+  const contactsRef = collection(db, "users", state.user.uid, "contacts");
+  state.unsubContacts = onSnapshot(contactsRef, (snap) => {
+    state.contacts = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderContacts();
+  });
+}
+
+function renderContacts() {
+  if (!els.contactsList) return;
+  els.contactsList.innerHTML = "";
+
+  const rows = [...state.contacts].sort((a, b) =>
+    String(a.name || "").localeCompare(String(b.name || ""))
+  );
+
+  if (!rows.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = t("contactsEmpty");
+    els.contactsList.appendChild(empty);
+    return;
+  }
+
+  rows.forEach((contact) => {
+    const item = document.createElement("div");
+    item.className = "contact-item";
+
+    const meta = document.createElement("div");
+    meta.className = "contact-meta";
+    meta.innerHTML = `<strong>${escapeHtml(contact.name || contact.callId || "-")}</strong><span>${escapeHtml(contact.callId || "-")}</span>`;
+
+    const callBtn = document.createElement("button");
+    callBtn.className = "btn";
+    callBtn.type = "button";
+    callBtn.textContent = t("contactCall");
+    callBtn.addEventListener("click", () => callContact(contact.callId || ""));
+
+    item.appendChild(meta);
+    item.appendChild(callBtn);
+    els.contactsList.appendChild(item);
+  });
+}
+
+async function saveContact() {
+  if (!state.user) return;
+  const name = String(els.contactNameInput?.value || "").trim();
+  const callId = normalizeCallId(els.contactCallIdInput?.value || "");
+
+  if (!name) {
+    setStatus(els.contactsStatus, t("contactNameRequired"));
+    return;
+  }
+  if (!callId) {
+    setStatus(els.contactsStatus, t("contactInvalid"));
+    return;
+  }
+
+  try {
+    const targetSnap = await getDoc(doc(db, "callIds", callId));
+    if (!targetSnap.exists()) {
+      setStatus(els.contactsStatus, t("contactMissing"));
+      return;
+    }
+
+    const contactRef = doc(db, "users", state.user.uid, "contacts", callId);
+    await setDoc(contactRef, {
+      name,
+      callId,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    els.contactNameInput.value = "";
+    els.contactCallIdInput.value = "";
+    setStatus(els.contactsStatus, t("contactAdded"));
+  } catch (err) {
+    setStatus(els.contactsStatus, `Contact save failed: ${err.message}`);
+  }
+}
+
+function callContact(callId) {
+  const targetId = normalizeCallId(callId);
+  if (!targetId) {
+    setStatus(els.callStatus, t("contactInvalid"));
+    return;
+  }
+  els.dialIdInput.value = targetId;
+  startCallById(targetId);
+}
+
 function renderCallLogs() {
   const all = new Map();
 
@@ -326,26 +472,25 @@ function renderCallLogs() {
     `;
     btn.addEventListener("click", () => {
       els.dialIdInput.value = counterpartId;
-      startCall();
+      startCallById(counterpartId);
     });
     els.callLogList.appendChild(btn);
   });
 }
 
 async function startCall() {
-  if (state.currentRoomId) {
-    setStatus(els.callStatus, "You are in a room. Leave room mode to place a direct call.");
-    return;
-  }
-
-  if (!state.profile?.callId) {
-    setStatus(els.callStatus, "Your profile has no call ID");
-    return;
-  }
-
   const targetId = normalizeCallId(els.dialIdInput.value);
   if (!targetId) {
     setStatus(els.callStatus, "Enter a valid recipient ID");
+    return;
+  }
+
+  await startCallById(targetId);
+}
+
+async function startCallById(targetId) {
+  if (!state.profile?.callId) {
+    setStatus(els.callStatus, "Your profile has no call ID");
     return;
   }
 
@@ -560,11 +705,6 @@ async function endCall() {
   }
 
   if (!state.currentCallId) {
-    if (state.currentRoomId) {
-      await leaveCurrentRoom();
-      setStatus(els.callStatus, "Left room");
-      return;
-    }
     setStatus(els.callStatus, "No active call");
     return;
   }
@@ -644,363 +784,7 @@ function getOpenDataChannels() {
     channels.push(state.dataChannel);
   }
 
-  state.roomPeers.forEach((peer) => {
-    if (peer.channel && peer.channel.readyState === "open") {
-      channels.push(peer.channel);
-    }
-  });
-
   return channels;
-}
-
-async function ensureLocalMedia() {
-  if (state.localStream && state.localStream.getTracks().length) {
-    return;
-  }
-  state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-  els.localVideo.srcObject = state.localStream;
-}
-
-async function createRoom() {
-  if (!state.user || !state.profile?.callId) {
-    setStatus(els.roomStatus, "Complete profile setup first.");
-    return;
-  }
-
-  const roomId = generateRoomId();
-  await joinRoomById(roomId, true);
-}
-
-async function copyRoomLink() {
-  const roomLink = els.roomLinkInput.value || "";
-  if (!roomLink) {
-    setStatus(els.roomStatus, "No active room link to copy.");
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(roomLink);
-    setStatus(els.roomStatus, "Room link copied.");
-  } catch {
-    setStatus(els.roomStatus, "Clipboard blocked. Copy the link manually.");
-  }
-}
-
-async function joinRoomFromInput() {
-  const raw = (els.joinRoomInput.value || "").trim();
-  const roomId = parseRoomId(raw);
-  if (!roomId) {
-    setStatus(els.roomStatus, "Enter a valid room link or room ID.");
-    return;
-  }
-  await joinRoomById(roomId, false);
-}
-
-function maybeJoinRoomFromUrl() {
-  const roomId = parseRoomId(window.location.href);
-  if (!roomId) return;
-  joinRoomById(roomId, false).catch((err) => {
-    setStatus(els.roomStatus, `Join failed: ${err.message}`);
-  });
-}
-
-async function joinRoomById(roomId, isCreator) {
-  if (!state.user || !state.profile?.callId) {
-    setStatus(els.roomStatus, "Complete profile setup first.");
-    return;
-  }
-  if (state.currentRoomId === roomId) {
-    setStatus(els.roomStatus, `Already in room ${roomId}.`);
-    return;
-  }
-
-  await teardownCall();
-  await ensureLocalMedia();
-
-  const roomRef = doc(db, "rooms", roomId);
-  if (isCreator) {
-    await setDoc(roomRef, {
-      createdByUid: state.user.uid,
-      createdById: state.profile.callId,
-      status: "active",
-      createdAt: serverTimestamp(),
-    });
-  } else {
-    const roomSnap = await getDoc(roomRef);
-    if (!roomSnap.exists()) {
-      throw new Error("Room not found");
-    }
-  }
-
-  state.currentRoomId = roomId;
-  state.roomRole = isCreator ? "host" : "guest";
-  state.participantDocRef = doc(db, "rooms", roomId, "participants", state.user.uid);
-
-  await setDoc(state.participantDocRef, {
-    uid: state.user.uid,
-    callId: state.profile.callId,
-    joinedAt: serverTimestamp(),
-  });
-
-  state.roomPeers = new Map();
-  state.roomParticipants = new Map();
-  attachRoomWatchers(roomId);
-  updateRoomLink(roomId);
-  setStatus(els.callStatus, "Room open. Waiting for participants...");
-  setStatus(els.roomStatus, `Joined room ${roomId}`);
-  showCallModal();
-}
-
-async function leaveCurrentRoom() {
-  if (!state.currentRoomId) {
-    setStatus(els.roomStatus, "Not in a room.");
-    return;
-  }
-  await teardownCall();
-  clearRoomFromUrl();
-}
-
-function attachRoomWatchers(roomId) {
-  const participantsRef = collection(db, "rooms", roomId, "participants");
-  const signalsRef = query(
-    collection(db, "rooms", roomId, "signals"),
-    where("toUid", "==", state.user.uid)
-  );
-
-  state.unsubRoomParticipants = onSnapshot(participantsRef, (snap) => {
-    const nextParticipants = new Map();
-
-    snap.docs.forEach((d) => {
-      const item = d.data();
-      nextParticipants.set(d.id, item);
-    });
-
-    state.roomParticipants = nextParticipants;
-    updateRoomParticipantsUi();
-    syncRoomPeers();
-  });
-
-  state.unsubRoomSignals = onSnapshot(signalsRef, (snap) => {
-    snap.docChanges().forEach(async (change) => {
-      if (change.type !== "added") return;
-      const data = change.doc.data();
-      try {
-        await handleRoomSignal(data);
-      } catch {
-        // Ignore malformed signal messages.
-      } finally {
-        deleteDoc(change.doc.ref).catch(() => {});
-      }
-    });
-  });
-}
-
-function syncRoomPeers() {
-  if (!state.currentRoomId || !state.localStream) return;
-  const remoteUids = [...state.roomParticipants.keys()].filter((uid) => uid !== state.user.uid);
-
-  remoteUids.forEach((remoteUid) => {
-    if (state.roomPeers.has(remoteUid)) return;
-    const isOfferer = state.user.uid.localeCompare(remoteUid) < 0;
-    createRoomPeer(remoteUid, isOfferer);
-  });
-
-  state.roomPeers.forEach((_, remoteUid) => {
-    if (remoteUids.includes(remoteUid)) return;
-    removeRoomPeer(remoteUid);
-  });
-}
-
-async function createRoomPeer(remoteUid, isOfferer) {
-  await ensureTurnIceServers();
-  const pc = new RTCPeerConnection({
-    iceServers: state.turnIceServers || defaultIceServers,
-  });
-  const remoteStream = new MediaStream();
-  const remoteAudioEl = document.createElement("audio");
-  remoteAudioEl.autoplay = true;
-  remoteAudioEl.playsInline = true;
-  remoteAudioEl.srcObject = remoteStream;
-  els.remoteAudioBucket?.appendChild(remoteAudioEl);
-
-  const peer = {
-    uid: remoteUid,
-    pc,
-    channel: null,
-    remoteStream,
-    audioEl: remoteAudioEl,
-  };
-  state.roomPeers.set(remoteUid, peer);
-
-  state.localStream.getTracks().forEach((track) => pc.addTrack(track, state.localStream));
-
-  pc.onicecandidate = (event) => {
-    if (!event.candidate || !state.currentRoomId) return;
-    sendRoomSignal(remoteUid, {
-      type: "candidate",
-      candidate: event.candidate.toJSON(),
-    });
-  };
-
-  pc.ontrack = (event) => {
-    event.streams[0].getTracks().forEach((track) => {
-      peer.remoteStream.addTrack(track);
-      if (track.kind === "video" && !els.remoteVideo.srcObject) {
-        els.remoteVideo.srcObject = peer.remoteStream;
-        setRemoteAvatarLabel(state.roomParticipants.get(remoteUid)?.callId || remoteUid);
-      }
-    });
-    updateRemoteAvatarVisibility();
-  };
-
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === "failed" || pc.connectionState === "closed") {
-      removeRoomPeer(remoteUid);
-    }
-  };
-
-  if (isOfferer) {
-    peer.channel = pc.createDataChannel("translation");
-    setupDataChannel(peer.channel);
-  } else {
-    pc.ondatachannel = (event) => {
-      peer.channel = event.channel;
-      setupDataChannel(peer.channel);
-    };
-  }
-
-  if (isOfferer) {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await sendRoomSignal(remoteUid, {
-      type: "offer",
-      sdp: { type: offer.type, sdp: offer.sdp },
-    });
-  }
-}
-
-async function handleRoomSignal(signal) {
-  const fromUid = signal?.fromUid;
-  if (!fromUid || fromUid === state.user?.uid) return;
-  if (!state.roomParticipants.has(fromUid)) return;
-
-  let peer = state.roomPeers.get(fromUid);
-  if (!peer) {
-    const shouldOffer = state.user.uid.localeCompare(fromUid) < 0;
-    await createRoomPeer(fromUid, shouldOffer);
-    peer = state.roomPeers.get(fromUid);
-  }
-  if (!peer) return;
-
-  if (signal.type === "offer") {
-    await peer.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-    const answer = await peer.pc.createAnswer();
-    await peer.pc.setLocalDescription(answer);
-    await sendRoomSignal(fromUid, {
-      type: "answer",
-      sdp: { type: answer.type, sdp: answer.sdp },
-    });
-    return;
-  }
-
-  if (signal.type === "answer") {
-    if (!peer.pc.currentRemoteDescription) {
-      await peer.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-    }
-    return;
-  }
-
-  if (signal.type === "candidate" && signal.candidate) {
-    try {
-      await peer.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-    } catch {
-      // Ignore ICE races.
-    }
-  }
-}
-
-async function sendRoomSignal(toUid, payload) {
-  if (!state.currentRoomId) return;
-  await addDoc(collection(db, "rooms", state.currentRoomId, "signals"), {
-    fromUid: state.user.uid,
-    toUid,
-    ...payload,
-    createdAt: serverTimestamp(),
-  });
-}
-
-function removeRoomPeer(remoteUid) {
-  const peer = state.roomPeers.get(remoteUid);
-  if (!peer) return;
-  try {
-    peer.pc.close();
-  } catch {
-    // Ignore close failures.
-  }
-  if (peer.audioEl) {
-    peer.audioEl.srcObject = null;
-    peer.audioEl.remove();
-  }
-  state.roomPeers.delete(remoteUid);
-
-  if (els.remoteVideo.srcObject === peer.remoteStream) {
-    const fallback = [...state.roomPeers.values()][0];
-    if (fallback) {
-      els.remoteVideo.srcObject = fallback.remoteStream;
-      setRemoteAvatarLabel(state.roomParticipants.get(fallback.uid)?.callId || fallback.uid);
-    } else {
-      els.remoteVideo.srcObject = null;
-      setRemoteAvatarLabel("Remote");
-    }
-  }
-  updateRemoteAvatarVisibility();
-}
-
-function updateRoomParticipantsUi() {
-  if (!state.currentRoomId) {
-    setStatus(els.roomParticipants, "Participants: -");
-    return;
-  }
-
-  const labels = [...state.roomParticipants.values()].map((item) => item.callId || item.uid);
-  const participantsText = labels.length ? labels.join(", ") : "(only you)";
-  setStatus(els.roomParticipants, `Participants: ${participantsText}`);
-}
-
-function updateRoomLink(roomId) {
-  const roomUrl = new URL(window.location.href);
-  roomUrl.searchParams.set("room", roomId);
-  roomUrl.hash = "";
-  els.roomLinkInput.value = roomUrl.toString();
-  window.history.replaceState({}, "", `${window.location.pathname}?room=${encodeURIComponent(roomId)}`);
-}
-
-function clearRoomFromUrl() {
-  window.history.replaceState({}, "", window.location.pathname);
-}
-
-function parseRoomId(input) {
-  const raw = (input || "").trim();
-  if (!raw) return "";
-
-  try {
-    const url = new URL(raw);
-    const param = normalizeCallId(url.searchParams.get("room") || "");
-    if (param) return param;
-  } catch {
-    // Non-URL input.
-  }
-
-  if (raw.includes("room=")) {
-    const q = raw.split("room=")[1] || "";
-    const id = normalizeCallId(q.split("&")[0]);
-    if (id) return id;
-  }
-
-  return normalizeCallId(raw);
-}
-
-function generateRoomId() {
-  return `room-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function toggleMute() {
@@ -1022,36 +806,6 @@ function toggleCamera() {
 }
 
 async function teardownCall() {
-  if (state.participantDocRef) {
-    try {
-      await deleteDoc(state.participantDocRef);
-    } catch {
-      // Ignore participant cleanup failures.
-    }
-  }
-
-  if (state.unsubRoomParticipants) state.unsubRoomParticipants();
-  if (state.unsubRoomSignals) state.unsubRoomSignals();
-  state.unsubRoomParticipants = null;
-  state.unsubRoomSignals = null;
-  state.participantDocRef = null;
-
-  state.roomPeers.forEach((peer) => {
-    try {
-      if (peer.audioEl) {
-        peer.audioEl.srcObject = null;
-        peer.audioEl.remove();
-      }
-      peer.pc?.close();
-    } catch {
-      // Ignore room peer teardown failures.
-    }
-  });
-  state.roomPeers.clear();
-  state.roomParticipants.clear();
-  state.currentRoomId = null;
-  state.roomRole = null;
-
   if (state.localStream) {
     state.localStream.getTracks().forEach((t) => t.stop());
   }
@@ -1082,13 +836,6 @@ async function teardownCall() {
 
   els.localVideo.srcObject = null;
   els.remoteVideo.srcObject = null;
-  if (els.remoteAudioBucket) {
-    els.remoteAudioBucket.innerHTML = "";
-  }
-  clearRoomFromUrl();
-  setStatus(els.roomStatus, "Not in a room");
-  setStatus(els.roomParticipants, "Participants: -");
-  els.roomLinkInput.value = "";
   stopAutoTranslate();
   stopRingback();
   hideOutgoingModal();
@@ -1101,6 +848,7 @@ async function cleanupAuthScoped() {
   if (state.unsubIncoming) state.unsubIncoming();
   if (state.unsubLogsA) state.unsubLogsA();
   if (state.unsubLogsB) state.unsubLogsB();
+  if (state.unsubContacts) state.unsubContacts();
   stopRingtone();
   stopRingback();
   hideOutgoingModal();
@@ -1109,14 +857,45 @@ async function cleanupAuthScoped() {
   state.unsubIncoming = null;
   state.unsubLogsA = null;
   state.unsubLogsB = null;
+  state.unsubContacts = null;
+  state.contacts = [];
   state.turnIceServers = null;
   state.turnExpiresAtMs = 0;
   state.turnFetchPromise = null;
+  if (els.contactsList) els.contactsList.innerHTML = "";
   await teardownCall();
 }
 
 function setStatus(el, text) {
+  if (!el) return;
   el.textContent = text;
+}
+
+function t(key) {
+  const lang = locale.code === "es" ? "es" : "en";
+  return i18n[lang][key] || i18n.en[key] || key;
+}
+
+function applyDashboardLocale() {
+  if (els.dashTitle) els.dashTitle.textContent = t("dashTitle");
+  if (els.logoutBtn) els.logoutBtn.textContent = t("logout");
+  if (els.setupTitle) els.setupTitle.textContent = t("setupTitle");
+  if (els.setupHelp) els.setupHelp.textContent = t("setupHelp");
+  if (els.setupCallIdInput) els.setupCallIdInput.placeholder = t("setupPlaceholder");
+  if (els.setupProfileBtn) els.setupProfileBtn.textContent = t("saveId");
+  if (els.callSectionTitle) els.callSectionTitle.textContent = t("callSectionTitle");
+  if (els.dialIdInput) els.dialIdInput.placeholder = t("dialPlaceholder");
+  if (els.callBtn) els.callBtn.textContent = t("callBtn");
+  if (els.contactsTitle) els.contactsTitle.textContent = t("contactsTitle");
+  if (els.contactNameInput) els.contactNameInput.placeholder = t("contactNamePlaceholder");
+  if (els.contactCallIdInput) els.contactCallIdInput.placeholder = t("contactCallIdPlaceholder");
+  if (els.addContactBtn) els.addContactBtn.textContent = t("saveContact");
+  if (els.historyTitle) els.historyTitle.textContent = t("historyTitle");
+  if (els.incomingStatus) els.incomingStatus.textContent = t("incomingIdle");
+  if (els.callStatus) els.callStatus.textContent = t("callIdle");
+  if (els.contactsStatus) els.contactsStatus.textContent = t("contactsHint");
+  updateDevPreviewButton();
+  renderContacts();
 }
 
 function showCallModal() {
@@ -1484,7 +1263,7 @@ function toggleDevCallPreview() {
 
 function updateDevPreviewButton() {
   if (!els.devPreviewBtn) return;
-  els.devPreviewBtn.textContent = state.devCallPreview ? "Close In-Call (Dev)" : "Open In-Call (Dev)";
+  els.devPreviewBtn.textContent = state.devCallPreview ? t("devClose") : t("devOpen");
 }
 
 function resetAllModals() {
@@ -1711,4 +1490,13 @@ function apiUrl(pathname) {
   if (!apiBaseUrl) return pathname;
   const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
   return `${apiBaseUrl}${path}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
 }

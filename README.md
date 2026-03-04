@@ -11,7 +11,6 @@ Google Voice-style web calling app using `HTML/CSS/JS` + Firebase + server-side 
    - Call ID is chosen during account creation
 3. `dashboard.html` = protected user dashboard:
    - Call by typing user ID
-   - Group room links for multi-party calls
    - Incoming popup with accept/reject
    - Outgoing ringing popup
    - In-call popup with controls
@@ -161,7 +160,6 @@ firebase deploy --only firestore:rules,firestore:indexes
 - This is an MVP scaffold and not telecom-grade production yet.
 - STT is production-style (server-side OpenAI transcription via `/api/transcribe`).
 - Translation uses Google Cloud Translation API via server endpoint `/api/translate`.
-- Group room mode uses Firestore paths: `rooms/{roomId}/participants/{uid}` and `rooms/{roomId}/signals/{doc}`.
 - Backend API routes now require Firebase Auth bearer tokens and apply basic per-user/IP rate limits.
 - Production server middleware now includes `helmet`, strict CORS allowlisting, and `trust proxy`.
 - Rate limiting supports shared Redis (Upstash REST) when configured; otherwise falls back to in-memory limits.
