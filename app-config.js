@@ -1,7 +1,7 @@
 window.VOICEBRIDGE_CONFIG = Object.assign(
   {
     // Active local-backend tunnel URL
-    API_BASE_URL: "https://skills-landing-privilege-retrieval.trycloudflare.com",
+    API_BASE_URL: "https://wear-scientist-initiatives-knowing.trycloudflare.com",
   },
   window.VOICEBRIDGE_CONFIG || {}
 );
