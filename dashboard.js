@@ -640,7 +640,8 @@ async function answerIncomingCall() {
     return;
   }
 
-  const callRef = doc(db, "calls", state.incomingCall.id);
+  const acceptedCall = { ...state.incomingCall };
+  const callRef = doc(db, "calls", acceptedCall.id);
 
   try {
     primeRemotePlayback();
@@ -656,11 +657,11 @@ async function answerIncomingCall() {
       receiverAcceptedSessionId: DASH_SESSION_ID,
     });
     await setupPeer(false);
-    state.remotePeerId = state.incomingCall.callerId || "Remote";
+    state.remotePeerId = acceptedCall.callerId || "Remote";
     setRemoteAvatarLabel(state.remotePeerId);
 
-    const offerCandidatesRef = collection(db, "calls", state.incomingCall.id, "offerCandidates");
-    const answerCandidatesRef = collection(db, "calls", state.incomingCall.id, "answerCandidates");
+    const offerCandidatesRef = collection(db, "calls", acceptedCall.id, "offerCandidates");
+    const answerCandidatesRef = collection(db, "calls", acceptedCall.id, "answerCandidates");
 
     state.pc.onicecandidate = async (event) => {
       if (event.candidate) {
@@ -680,7 +681,7 @@ async function answerIncomingCall() {
       receiverMediaReadyAt: serverTimestamp(),
     });
 
-    state.currentCallId = state.incomingCall.id;
+    state.currentCallId = acceptedCall.id;
 
     state.unsubCandidatesB = onSnapshot(offerCandidatesRef, (snap) => {
       snap.docChanges().forEach(async (change) => {
