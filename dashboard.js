@@ -723,7 +723,7 @@ async function setupPeer(isCaller) {
   await teardownCall();
   await ensureTurnIceServers();
 
-  state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+  state.localStream = await getLocalMediaStream();
   state.remoteStream = new MediaStream();
 
   els.localVideo.srcObject = state.localStream;
@@ -752,6 +752,29 @@ async function setupPeer(isCaller) {
       state.dataChannel = event.channel;
       setupDataChannel(state.dataChannel);
     };
+  }
+}
+
+async function getLocalMediaStream() {
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+  } catch (err) {
+    const name = String(err?.name || "");
+    const message = String(err?.message || "");
+    const maybePermissionIssue =
+      name === "NotAllowedError" ||
+      name === "NotFoundError" ||
+      message.toLowerCase().includes("not allowed") ||
+      message.toLowerCase().includes("permission");
+
+    if (!maybePermissionIssue) {
+      throw err;
+    }
+
+    // Mobile browsers often block camera first; keep call usable with audio-only.
+    const audioOnly = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    setStatus(els.callStatus, "Camera unavailable. Continuing with audio only.");
+    return audioOnly;
   }
 }
 
