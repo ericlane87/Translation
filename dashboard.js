@@ -543,6 +543,7 @@ async function startCallById(targetId) {
       status: "ringing",
     });
 
+    let outcomeNotified = false;
     state.unsubCall = onSnapshot(callRef, async (snap) => {
       const data = snap.data();
       if (!data || !state.pc) return;
@@ -565,6 +566,10 @@ async function startCallById(targetId) {
       }
 
       if (data.status === "ended" || data.status === "rejected") {
+        if (!outcomeNotified) {
+          maybeShowCallerOutcomePopup(targetId, data);
+          outcomeNotified = true;
+        }
         setStatus(els.callStatus, `Call ${data.status}`);
         clearRingingTimeout();
         stopRingback();
@@ -659,6 +664,15 @@ async function answerIncomingCall() {
 
     setStatus(els.callStatus, "Connected");
   } catch (err) {
+    try {
+      await updateDoc(callRef, {
+        status: "rejected",
+        rejectedAt: serverTimestamp(),
+        endedReason: classifyAnswerFailureReason(err),
+      });
+    } catch {
+      // Ignore update failures; caller timeout fallback still applies.
+    }
     setStatus(els.callStatus, `Answer failed: ${err.message}`);
     await teardownCall();
   }
@@ -673,6 +687,7 @@ async function rejectIncomingCall() {
   await updateDoc(doc(db, "calls", state.incomingCall.id), {
     status: "rejected",
     rejectedAt: serverTimestamp(),
+    endedReason: "receiver_declined",
   });
 
   setStatus(els.callStatus, "Rejected");
@@ -790,6 +805,38 @@ function clearAnswerApplyRetry() {
   if (state.answerApplyRetryTimer) {
     window.clearTimeout(state.answerApplyRetryTimer);
     state.answerApplyRetryTimer = null;
+  }
+}
+
+function classifyAnswerFailureReason(err) {
+  const name = String(err?.name || "");
+  const msg = String(err?.message || "").toLowerCase();
+  const permissionDenied =
+    name === "NotAllowedError" ||
+    msg.includes("permission denied") ||
+    msg.includes("not allowed") ||
+    msg.includes("blocked media");
+  if (permissionDenied) return "receiver_media_denied";
+  return "receiver_answer_failed";
+}
+
+function maybeShowCallerOutcomePopup(targetId, data) {
+  const reason = String(data?.endedReason || "");
+  const peer = targetId || "The other person";
+  let message = "";
+
+  if (reason === "receiver_media_denied") {
+    message = `${peer} accepted, but camera/microphone permission was denied.`;
+  } else if (data?.status === "rejected") {
+    message = `${peer} declined the call.`;
+  } else if (reason === "no_answer_timeout") {
+    message = `${peer} did not answer the call.`;
+  } else if (reason === "receiver_answer_failed") {
+    message = `${peer} could not join the call.`;
+  }
+
+  if (message) {
+    window.alert(message);
   }
 }
 
