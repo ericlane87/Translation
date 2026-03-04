@@ -189,7 +189,11 @@ els.answerBtn.addEventListener("click", answerIncomingCall);
 els.rejectBtn.addEventListener("click", rejectIncomingCall);
 els.endCallBtn.addEventListener("click", endCall);
 els.toggleMuteBtn.addEventListener("click", toggleMute);
-els.toggleCameraBtn.addEventListener("click", toggleCamera);
+els.toggleCameraBtn.addEventListener("click", () => {
+  toggleCamera().catch((err) => {
+    setStatus(els.callStatus, `Camera toggle failed: ${err?.message || "unknown error"}`);
+  });
+});
 els.setupProfileBtn.addEventListener("click", setupMissingProfileFromForm);
 els.cancelOutgoingBtn.addEventListener("click", cancelOutgoingCall);
 els.addContactBtn?.addEventListener("click", saveContact);
@@ -1061,13 +1065,53 @@ function toggleMute() {
   els.toggleMuteBtn.textContent = state.micMuted ? "Unmute" : "Mute";
 }
 
-function toggleCamera() {
+async function toggleCamera() {
   if (!state.localStream) return;
-  state.cameraOff = !state.cameraOff;
+
+  const currentVideoTracks = state.localStream.getVideoTracks();
+  const hasLiveVideoTrack = currentVideoTracks.some((t) => t.readyState === "live");
+
+  // Turn camera on: if no live video track exists (audio-only call), request one now.
+  if (state.cameraOff || !hasLiveVideoTrack) {
+    if (!hasLiveVideoTrack) {
+      const camStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false,
+      });
+      const newTrack = camStream.getVideoTracks()[0];
+      if (!newTrack) {
+        throw new Error("No camera track available");
+      }
+
+      state.localStream.addTrack(newTrack);
+      if (state.pc) {
+        const videoSender = state.pc.getSenders().find((s) => s.track && s.track.kind === "video");
+        if (videoSender) {
+          await videoSender.replaceTrack(newTrack);
+        } else {
+          state.pc.addTrack(newTrack, state.localStream);
+        }
+      }
+      els.localVideo.srcObject = state.localStream;
+      els.localVideo.play().catch(() => {});
+    }
+
+    state.cameraOff = false;
+    state.localStream.getVideoTracks().forEach((track) => {
+      track.enabled = true;
+    });
+    els.toggleCameraBtn.textContent = "Camera Off";
+    setStatus(els.callStatus, "Camera on");
+    return;
+  }
+
+  // Turn camera off.
+  state.cameraOff = true;
   state.localStream.getVideoTracks().forEach((track) => {
-    track.enabled = !state.cameraOff;
+    track.enabled = false;
   });
-  els.toggleCameraBtn.textContent = state.cameraOff ? "Camera On" : "Camera Off";
+  els.toggleCameraBtn.textContent = "Camera On";
+  setStatus(els.callStatus, "Camera off");
 }
 
 async function teardownCall() {
