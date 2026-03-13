@@ -161,7 +161,6 @@ const state = {
   ringbackTimer: null,
   remotePeerId: "",
   autoTranslateOn: false,
-  mediaRecorder: null,
   transcribeBusy: false,
   lastTranscript: "",
   devCallPreview: false,
@@ -172,6 +171,13 @@ const state = {
   vadAnalyser: null,
   vadTimer: null,
   vadSampleBuffer: null,
+  captureContext: null,
+  captureSource: null,
+  captureProcessor: null,
+  captureFlushTimer: null,
+  captureSampleRate: 16_000,
+  captureChunks: [],
+  captureChunkSamples: 0,
   lastSpeechAt: 0,
   turnIceServers: null,
   turnExpiresAtMs: 0,
@@ -1703,82 +1709,21 @@ function shouldSendAudioChunkForTranscription() {
 
 function startAutoTranslate() {
   if (state.autoTranslateOn) return;
-  if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
-    logDebug("auto translation already running");
-    return;
-  }
   if (!state.localStream || !state.localStream.getAudioTracks().length) {
     logDebug("auto translation start failed • no microphone track");
     setStatus(els.callStatus, "No microphone stream available for auto translation.");
     return;
   }
-  if (typeof MediaRecorder === "undefined") {
-    logDebug("auto translation unavailable • MediaRecorder missing");
-    setStatus(els.callStatus, "Auto translation unavailable in this browser.");
-    return;
-  }
-  const mimeType = pickRecorderMimeType();
-  if (!mimeType) {
-    logDebug("auto translation unavailable • no supported recorder mime type");
-    setStatus(els.callStatus, "MediaRecorder format not supported in this browser.");
-    return;
-  }
-
-  const recorderStream = new MediaStream(state.localStream.getAudioTracks());
-  const recorder = new MediaRecorder(recorderStream, { mimeType });
-
-  recorder.ondataavailable = async (event) => {
-    if (!state.autoTranslateOn) return;
-    if (!event.data || event.data.size < 1200) {
-      logDebug(`audio chunk skipped • too small (${event.data?.size || 0} bytes)`);
-      return;
-    }
-    if (!shouldSendAudioChunkForTranscription()) {
-      logDebug("audio chunk skipped • no recent speech detected");
-      return;
-    }
-    if (state.transcribeBusy) {
-      logDebug("audio chunk skipped • STT already in progress");
-      return;
-    }
-
-    state.transcribeBusy = true;
-    try {
-      logDebug(`stt request started • chunk=${event.data.size} bytes`);
-      const spoken = await transcribeAudioBlob(event.data);
-      if (!spoken) {
-        logDebug("stt returned empty text");
-        return;
-      }
-      logDebug(`stt response text • "${spoken.slice(0, 80)}"`);
-      if (spoken === state.lastTranscript) {
-        logDebug("stt duplicate ignored");
-        return;
-      }
-      state.lastTranscript = spoken;
-      await performTranslationFromText(spoken);
-    } catch (err) {
-      logDebug(`stt/translation pipeline failed • ${err?.message || "unknown error"}`);
-    } finally {
-      state.transcribeBusy = false;
-    }
-  };
-  recorder.onerror = () => {
-    logDebug("media recorder error");
-    setStatus(els.callStatus, "Auto translation recorder error. Try reconnecting call.");
-  };
-
-  state.mediaRecorder = recorder;
   try {
-    recorder.start(2400);
     state.autoTranslateOn = true;
-    logDebug(`auto translation started • mime=${mimeType}`);
-    setStatus(els.callStatus, "Connected • Auto translation on (server STT)");
     startSpeechGate();
-  } catch {
+    startAudioCapture();
+    logDebug(`auto translation started • wav capture @ ${state.captureSampleRate}Hz`);
+    setStatus(els.callStatus, "Connected • Auto translation on (server STT)");
+  } catch (err) {
     state.autoTranslateOn = false;
-    state.mediaRecorder = null;
-    logDebug("auto translation failed to start recorder");
+    stopAudioCapture();
+    logDebug(`auto translation failed to start capture • ${err?.message || "unknown error"}`);
     setStatus(els.callStatus, "Auto translation failed to start.");
   }
 }
@@ -1789,16 +1734,166 @@ function stopAutoTranslate() {
   state.lastTranscript = "";
   state.transcribeBusy = false;
   stopSpeechGate();
-  if (state.mediaRecorder) {
+  stopAudioCapture();
+}
+
+function startAudioCapture() {
+  stopAudioCapture();
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) {
+    throw new Error("AudioContext unavailable");
+  }
+
+  const ctx = new Ctx({ sampleRate: state.captureSampleRate });
+  const source = ctx.createMediaStreamSource(new MediaStream(state.localStream.getAudioTracks()));
+  const processor = ctx.createScriptProcessor(4096, 1, 1);
+
+  state.captureContext = ctx;
+  state.captureSource = source;
+  state.captureProcessor = processor;
+  state.captureChunks = [];
+  state.captureChunkSamples = 0;
+  state.captureSampleRate = ctx.sampleRate || 16_000;
+
+  processor.onaudioprocess = (event) => {
+    if (!state.autoTranslateOn) return;
+    const input = event.inputBuffer.getChannelData(0);
+    const copy = new Float32Array(input.length);
+    copy.set(input);
+    state.captureChunks.push(copy);
+    state.captureChunkSamples += copy.length;
+  };
+
+  source.connect(processor);
+  processor.connect(ctx.destination);
+
+  state.captureFlushTimer = window.setInterval(() => {
+    flushCapturedAudioChunk().catch((err) => {
+      logDebug(`stt/translation pipeline failed • ${err?.message || "unknown error"}`);
+      state.transcribeBusy = false;
+    });
+  }, 2400);
+}
+
+function stopAudioCapture() {
+  if (state.captureFlushTimer) {
+    window.clearInterval(state.captureFlushTimer);
+    state.captureFlushTimer = null;
+  }
+  if (state.captureProcessor) {
     try {
-      if (state.mediaRecorder.state !== "inactive") {
-        state.mediaRecorder.stop();
-      }
+      state.captureProcessor.disconnect();
     } catch {
-      // Ignore stop errors.
+      // Ignore disconnect errors.
+    }
+    state.captureProcessor.onaudioprocess = null;
+  }
+  if (state.captureSource) {
+    try {
+      state.captureSource.disconnect();
+    } catch {
+      // Ignore disconnect errors.
     }
   }
-  state.mediaRecorder = null;
+  if (state.captureContext) {
+    state.captureContext.close().catch(() => {});
+  }
+
+  state.captureContext = null;
+  state.captureSource = null;
+  state.captureProcessor = null;
+  state.captureChunks = [];
+  state.captureChunkSamples = 0;
+}
+
+async function flushCapturedAudioChunk() {
+  if (!state.autoTranslateOn) return;
+  if (!state.captureChunks.length || state.captureChunkSamples < 2048) {
+    logDebug(`audio chunk skipped • too small (${state.captureChunkSamples} samples)`);
+    state.captureChunks = [];
+    state.captureChunkSamples = 0;
+    return;
+  }
+  if (!shouldSendAudioChunkForTranscription()) {
+    logDebug("audio chunk skipped • no recent speech detected");
+    state.captureChunks = [];
+    state.captureChunkSamples = 0;
+    return;
+  }
+  if (state.transcribeBusy) {
+    logDebug("audio chunk skipped • STT already in progress");
+    state.captureChunks = [];
+    state.captureChunkSamples = 0;
+    return;
+  }
+
+  const pcm = mergeFloat32Chunks(state.captureChunks, state.captureChunkSamples);
+  state.captureChunks = [];
+  state.captureChunkSamples = 0;
+
+  const wavBlob = encodeWavBlob(pcm, state.captureSampleRate);
+  state.transcribeBusy = true;
+  try {
+    logDebug(`stt request started • wav=${wavBlob.size} bytes`);
+    const spoken = await transcribeAudioBlob(wavBlob);
+    if (!spoken) {
+      logDebug("stt returned empty text");
+      return;
+    }
+    logDebug(`stt response text • "${spoken.slice(0, 80)}"`);
+    if (spoken === state.lastTranscript) {
+      logDebug("stt duplicate ignored");
+      return;
+    }
+    state.lastTranscript = spoken;
+    await performTranslationFromText(spoken);
+  } finally {
+    state.transcribeBusy = false;
+  }
+}
+
+function mergeFloat32Chunks(chunks, totalLength) {
+  const merged = new Float32Array(totalLength);
+  let offset = 0;
+  chunks.forEach((chunk) => {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return merged;
+}
+
+function encodeWavBlob(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
+
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, samples.length * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < samples.length; i += 1) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    offset += 2;
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+function writeAscii(view, offset, text) {
+  for (let i = 0; i < text.length; i += 1) {
+    view.setUint8(offset + i, text.charCodeAt(i));
+  }
 }
 
 function toggleDevCallPreview() {
@@ -2055,32 +2150,12 @@ function formatCallDateTime(timestamp) {
   });
 }
 
-function pickRecorderMimeType() {
-  const candidates = isIosDevice()
-    ? [
-        "audio/mp4;codecs=mp4a.40.2",
-        "audio/mp4",
-        "audio/webm;codecs=opus",
-        "audio/webm",
-      ]
-    : [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4",
-      ];
-
-  for (const type of candidates) {
-    if (MediaRecorder.isTypeSupported(type)) return type;
-  }
-  return "";
-}
-
 async function transcribeAudioBlob(blob) {
   if (!apiBaseUrl) {
     throw new Error("Backend API URL is not configured");
   }
   const form = new FormData();
-  const ext = blob.type.includes("mp4") ? "m4a" : "webm";
+  const ext = blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") ? "m4a" : "webm";
   form.append("audio", blob, `chunk.${ext}`);
   form.append("lang", state.profile?.language || "en");
 
