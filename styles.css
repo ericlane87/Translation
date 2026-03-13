@@ -463,20 +463,37 @@ video {
   gap: 6px;
 }
 
-#translationFeed p {
-  margin: 0;
-  padding: 8px;
-  background: #edf3ff;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
 #translationFeed .caption-row.outgoing {
   background: #edf3ff;
 }
 
 #translationFeed .caption-row.incoming {
   background: #eaf8ef;
+}
+
+#translationFeed .caption-row {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+
+.caption-title {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #5b6b85;
+}
+
+.caption-primary {
+  color: var(--text);
+}
+
+.caption-secondary {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .debug-feed-shell {

@@ -135,6 +135,7 @@ const els = {
 const state = {
   user: null,
   profile: null,
+  remoteProfile: null,
   currentCallId: null,
   incomingCall: null,
   localStream: null,
@@ -676,6 +677,8 @@ async function startCallById(targetId) {
       return;
     }
 
+    await loadRemoteProfile(receiverUid);
+
     await setupPeer(true);
     state.remotePeerId = targetId;
     setRemoteAvatarLabel(targetId);
@@ -795,6 +798,7 @@ async function answerIncomingCall() {
       receiverAcceptedAt: serverTimestamp(),
       receiverAcceptedSessionId: DASH_SESSION_ID,
     });
+    await loadRemoteProfile(acceptedCall.callerUid);
     await setupPeer(false);
     state.remotePeerId = acceptedCall.callerId || "Remote";
     setRemoteAvatarLabel(state.remotePeerId);
@@ -1309,6 +1313,7 @@ async function teardownCall() {
   state.dataChannel = null;
   state.currentCallId = null;
   state.remotePeerId = "";
+  state.remoteProfile = null;
   clearRingingTimeout();
   clearAnswerApplyRetry();
   state.unsubCall = null;
@@ -1327,6 +1332,22 @@ async function teardownCall() {
   setRemoteAvatarLabel("Remote");
   updateRemoteAvatarVisibility();
   hideCallModal();
+}
+
+async function loadRemoteProfile(uid) {
+  state.remoteProfile = null;
+  if (!uid) {
+    updateTranslationLegend();
+    return;
+  }
+
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    state.remoteProfile = snap.exists() ? snap.data() : null;
+  } catch {
+    state.remoteProfile = null;
+  }
+  updateTranslationLegend();
 }
 
 async function cleanupAuthScoped() {
@@ -1502,18 +1523,42 @@ function stopRingtone() {
   }
 }
 
-function appendFeed(kind, text) {
+function appendFeed(kind, primaryText, secondaryText = "") {
   if (!els.translationFeed) return;
   const key = kind === "incoming" ? "incoming" : "outgoing";
-  let p = els.translationFeed.querySelector(`[data-caption-key="${key}"]`);
-  if (!p) {
-    p = document.createElement("p");
-    p.dataset.captionKey = key;
-    p.className = `caption-row ${key}`;
-    els.translationFeed.appendChild(p);
+  let row = els.translationFeed.querySelector(`[data-caption-key="${key}"]`);
+  if (!row) {
+    row = document.createElement("div");
+    row.dataset.captionKey = key;
+    row.className = `caption-row ${key}`;
+
+    const title = document.createElement("strong");
+    title.className = "caption-title";
+    row.appendChild(title);
+
+    const primary = document.createElement("span");
+    primary.className = "caption-primary";
+    row.appendChild(primary);
+
+    const secondary = document.createElement("span");
+    secondary.className = "caption-secondary";
+    row.appendChild(secondary);
+
+    els.translationFeed.appendChild(row);
   }
-  p.textContent =
-    kind === "incoming" ? `Translated for you: ${text}` : `You said: ${text}`;
+  const title = row.querySelector(".caption-title");
+  const primary = row.querySelector(".caption-primary");
+  const secondary = row.querySelector(".caption-secondary");
+  if (title) {
+    title.textContent = kind === "incoming" ? "Translated for you" : "You said";
+  }
+  if (primary) {
+    primary.textContent = primaryText || "";
+  }
+  if (secondary) {
+    secondary.textContent = secondaryText || "";
+    secondary.style.display = secondaryText ? "block" : "none";
+  }
 }
 
 function logDebug(message) {
@@ -1575,15 +1620,38 @@ async function performTranslationFromText(spoken) {
       logDebug("translation payload send failed");
     }
   });
-  appendFeed("outgoing", spoken);
+  const previewTarget = resolveRemoteIncomingLanguage(from);
+  const preview =
+    previewTarget && previewTarget !== from
+      ? await translateText(spoken, from, previewTarget)
+      : null;
+  appendFeed(
+    "outgoing",
+    spoken,
+    preview ? `Sent to them in ${labelForLanguage(previewTarget)}: ${preview}` : ""
+  );
 }
 
 function updateTranslationLegend() {
   if (!els.translationLegend) return;
   const myLanguage = state.profile?.language === "es" ? "Spanish" : "English";
   const incomingLanguage = state.profile?.translateIncomingTo === "es" ? "Spanish" : "English";
+  const remoteIncomingLanguage = labelForLanguage(resolveRemoteIncomingLanguage());
+  const remoteLine = state.remoteProfile
+    ? ` The other person should receive your captions in ${remoteIncomingLanguage}.`
+    : "";
   els.translationLegend.textContent =
-    `You speak ${myLanguage}. Incoming translated captions appear here in ${incomingLanguage}.`;
+    `You speak ${myLanguage}. Incoming translated captions appear here in ${incomingLanguage}.${remoteLine}`;
+}
+
+function resolveRemoteIncomingLanguage(sourceLang = state.profile?.language === "es" ? "es" : "en") {
+  const configured = state.remoteProfile?.translateIncomingTo;
+  if (configured === "es" || configured === "en") return configured;
+  return sourceLang === "es" ? "en" : "es";
+}
+
+function labelForLanguage(code) {
+  return code === "es" ? "Spanish" : "English";
 }
 
 function startRingback() {
