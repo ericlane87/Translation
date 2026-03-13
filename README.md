@@ -64,8 +64,10 @@ For testing with someone in another country, host backend APIs separately and po
 
 1. Deploy backend (`server.mjs`) to a Node host (Render/Railway/Fly/Cloud Run).
 2. Set backend environment variables (`OPENAI_API_KEY`, `GOOGLE_TRANSLATE_API_KEY`, `FIREBASE_PROJECT_ID`, Firebase Admin credentials, TURN variables).
-3. In `app-config.js`, set:
-   - `API_BASE_URL: "https://your-backend-domain"`
+3. Configure the frontend to use the deployed backend:
+   - Option A: open the dashboard and paste your Render URL into the new `Backend API` field
+   - Option B: set `API_BASE_URL` in `app-config.js`
+   - Option C: append `?apiBaseUrl=https://your-backend-domain` once; it will be saved in local storage
 4. On backend, allow your GitHub Pages origin in `CORS_ORIGIN`:
    - `https://<your-username>.github.io`
    - for this repo: `https://ericlane87.github.io`
@@ -73,6 +75,7 @@ For testing with someone in another country, host backend APIs separately and po
 6. Test from two devices/networks using the Pages URL.
 
 Note: cross-country WebRTC reliability usually requires a public TURN server; STUN-only often fails across NAT/firewalls.
+Note: the dashboard now exposes a backend health check so you can confirm whether TURN, transcription, and translation are configured on the deployed backend.
 Note: avoid temporary/self-signed tunnel certs for `API_BASE_URL`; browsers will block TURN credential fetch if TLS is invalid.
 Note: this repo includes `.github/workflows/pages.yml` to deploy static files from `main` via GitHub Actions.
 

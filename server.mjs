@@ -420,6 +420,20 @@ app.get(
 
 app.use(express.static(__dirname));
 
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    environment: nodeEnv,
+    projectId: firebaseProjectId || null,
+    features: {
+      transcribe: hasOpenAiKey,
+      translate: hasGoogleTranslateKey,
+      turn: hasTurnConfig,
+      redisRateLimit: hasRedisRateStore,
+    },
+  });
+});
+
 app.get('*', (req, res) => {
   if (req.path.endsWith('.html')) {
     res.sendFile(path.join(__dirname, req.path));

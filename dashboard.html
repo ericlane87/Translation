@@ -43,6 +43,22 @@
         </section>
 
         <section class="panel glass span-2">
+          <h2>Backend API</h2>
+          <div class="dial-row">
+            <input
+              id="apiBaseInput"
+              type="url"
+              placeholder="https://your-render-service.onrender.com"
+            />
+            <button id="saveApiBaseBtn" class="btn">Save Backend</button>
+            <button id="clearApiBaseBtn" class="btn ghost">Clear</button>
+          </div>
+          <p id="apiBaseStatus" class="status-line">
+            Set your deployed backend URL for TURN, transcription, and translation.
+          </p>
+        </section>
+
+        <section class="panel glass span-2">
           <h2 id="contactsTitle">Contacts</h2>
           <div class="dial-row">
             <input id="contactNameInput" type="text" placeholder="Contact name (e.g. Michael)" />

@@ -18,7 +18,8 @@ import {
 import { auth, db } from "./firebase-client.js";
 
 const runtimeConfig = window.VOICEBRIDGE_CONFIG || {};
-const apiBaseUrl = normalizeApiBaseUrl(String(runtimeConfig.API_BASE_URL || ""));
+const apiBaseStorageKey = String(runtimeConfig.API_BASE_STORAGE_KEY || "VOICEBRIDGE_API_BASE_URL");
+let apiBaseUrl = normalizeApiBaseUrl(String(runtimeConfig.API_BASE_URL || ""));
 const locale = {
   code: "en",
 };
@@ -100,6 +101,10 @@ const els = {
   logoutBtn: byId("logoutBtn"),
   dialIdInput: byId("dialIdInput"),
   callBtn: byId("callBtn"),
+  apiBaseInput: byId("apiBaseInput"),
+  saveApiBaseBtn: byId("saveApiBaseBtn"),
+  clearApiBaseBtn: byId("clearApiBaseBtn"),
+  apiBaseStatus: byId("apiBaseStatus"),
   devPreviewBtn: byId("devPreviewBtn"),
   contactsTitle: byId("contactsTitle"),
   historyTitle: byId("historyTitle"),
@@ -185,6 +190,8 @@ els.logoutBtn.addEventListener("click", async () => {
   window.location.href = "auth.html";
 });
 els.callBtn.addEventListener("click", startCall);
+els.saveApiBaseBtn?.addEventListener("click", saveApiBaseUrlFromForm);
+els.clearApiBaseBtn?.addEventListener("click", clearApiBaseUrl);
 els.devPreviewBtn.addEventListener("click", toggleDevCallPreview);
 els.answerBtn.addEventListener("click", answerIncomingCall);
 els.rejectBtn.addEventListener("click", rejectIncomingCall);
@@ -229,6 +236,7 @@ if (els.remoteAudio) {
 }
 resetAllModals();
 applyDashboardLocale();
+initializeApiBaseControls();
 
 onAuthStateChanged(auth, async (user) => {
   await cleanupAuthScoped();
@@ -261,6 +269,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function startDashboardRealtime() {
+  updateApiBaseStatus();
   ensureTurnIceServers().catch(() => {
     setStatus(els.callStatus, "TURN unavailable, using fallback connectivity.");
   });
@@ -269,6 +278,101 @@ function startDashboardRealtime() {
   watchCallLogs();
   watchContacts();
   startPresenceHeartbeat();
+}
+
+function initializeApiBaseControls() {
+  if (els.apiBaseInput) {
+    els.apiBaseInput.value = apiBaseUrl;
+  }
+  updateApiBaseStatus();
+}
+
+function updateApiBaseStatus(message) {
+  if (!els.apiBaseStatus) return;
+  if (message) {
+    setStatus(els.apiBaseStatus, message);
+    return;
+  }
+  if (apiBaseUrl) {
+    setStatus(els.apiBaseStatus, `Backend configured: ${apiBaseUrl}`);
+    return;
+  }
+  setStatus(
+    els.apiBaseStatus,
+    "No backend URL set. Calls will be STUN-only, and transcription/translation will not work."
+  );
+}
+
+async function saveApiBaseUrlFromForm() {
+  const nextValue = normalizeApiBaseUrl(String(els.apiBaseInput?.value || ""));
+  if (!nextValue) {
+    updateApiBaseStatus("Enter a valid backend URL.");
+    return;
+  }
+
+  apiBaseUrl = nextValue;
+  window.VOICEBRIDGE_CONFIG = Object.assign({}, window.VOICEBRIDGE_CONFIG, {
+    API_BASE_URL: apiBaseUrl,
+  });
+  resetTurnConfigurationCache();
+
+  try {
+    window.localStorage.setItem(apiBaseStorageKey, apiBaseUrl);
+  } catch {
+    // Ignore storage failures and keep the runtime value.
+  }
+
+  updateApiBaseStatus("Checking backend...");
+  const probe = await probeBackendHealth();
+  updateApiBaseStatus(probe.message);
+}
+
+function clearApiBaseUrl() {
+  apiBaseUrl = "";
+  window.VOICEBRIDGE_CONFIG = Object.assign({}, window.VOICEBRIDGE_CONFIG, {
+    API_BASE_URL: "",
+  });
+  resetTurnConfigurationCache();
+  if (els.apiBaseInput) {
+    els.apiBaseInput.value = "";
+  }
+  try {
+    window.localStorage.removeItem(apiBaseStorageKey);
+  } catch {
+    // Ignore storage failures.
+  }
+  updateApiBaseStatus();
+}
+
+function resetTurnConfigurationCache() {
+  state.turnIceServers = null;
+  state.turnExpiresAtMs = 0;
+  state.turnFetchPromise = null;
+  state.turnDisabledUntilMs = 0;
+  state.turnFailureNotified = false;
+}
+
+async function probeBackendHealth() {
+  try {
+    const resp = await fetch(apiUrl("/api/health"));
+    if (!resp.ok) {
+      return { ok: false, message: `Backend check failed (${resp.status}).` };
+    }
+
+    const data = await resp.json();
+    const turn = data?.features?.turn ? "TURN ready" : "TURN missing";
+    const stt = data?.features?.transcribe ? "transcribe ready" : "transcribe missing";
+    const translate = data?.features?.translate ? "translate ready" : "translate missing";
+    return {
+      ok: true,
+      message: `Backend configured: ${apiBaseUrl} (${turn}, ${stt}, ${translate})`,
+    };
+  } catch {
+    return {
+      ok: false,
+      message: `Saved ${apiBaseUrl}, but the backend health check could not be reached.`,
+    };
+  }
 }
 
 async function setupMissingProfileFromForm() {
@@ -1887,6 +1991,9 @@ function pickRecorderMimeType() {
 }
 
 async function transcribeAudioBlob(blob) {
+  if (!apiBaseUrl) {
+    throw new Error("Backend API URL is not configured");
+  }
   const form = new FormData();
   const ext = blob.type.includes("mp4") ? "m4a" : "webm";
   form.append("audio", blob, `chunk.${ext}`);

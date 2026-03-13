@@ -1,0 +1,29 @@
+Render service: voicebridge-api
+
+Required for MVP:
+NODE_ENV=production
+FIREBASE_PROJECT_ID=translator-17aa3
+CORS_ORIGIN=https://ericlane87.github.io
+OPENAI_API_KEY=PASTE_YOUR_OPENAI_API_KEY
+GOOGLE_TRANSLATE_API_KEY=PASTE_YOUR_GOOGLE_TRANSLATE_API_KEY
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"translator-17aa3",...}
+
+Optional now, useful later:
+OPENAI_STT_MODEL=gpt-4o-mini-transcribe
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+
+Do not add until TURN is set up:
+TURN_URLS=turn:YOUR_TURN_HOST_OR_IP:3478?transport=udp,turn:YOUR_TURN_HOST_OR_IP:3478?transport=tcp
+TURN_REALM=YOUR_TURN_HOST_OR_IP
+TURN_SHARED_SECRET=PASTE_YOUR_TURN_SHARED_SECRET
+TURN_TTL_SEC=3600
+
+Render service settings:
+Name: voicebridge-api
+Language: Node
+Branch: main
+Root Directory: leave blank
+Build Command: npm install
+Start Command: npm start
+Instance Type: Starter
