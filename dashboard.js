@@ -2056,11 +2056,18 @@ function formatCallDateTime(timestamp) {
 }
 
 function pickRecorderMimeType() {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-  ];
+  const candidates = isIosDevice()
+    ? [
+        "audio/mp4;codecs=mp4a.40.2",
+        "audio/mp4",
+        "audio/webm;codecs=opus",
+        "audio/webm",
+      ]
+    : [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+      ];
 
   for (const type of candidates) {
     if (MediaRecorder.isTypeSupported(type)) return type;
