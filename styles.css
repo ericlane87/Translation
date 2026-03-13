@@ -471,6 +471,14 @@ video {
   font-size: 13px;
 }
 
+#translationFeed .caption-row.outgoing {
+  background: #edf3ff;
+}
+
+#translationFeed .caption-row.incoming {
+  background: #eaf8ef;
+}
+
 .debug-feed-shell {
   background: #fffdf7;
 }

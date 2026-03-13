@@ -127,6 +127,7 @@ const els = {
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
   translationFeed: byId("translationFeed"),
+  translationLegend: byId("translationLegend"),
   debugFeed: byId("debugFeed"),
   clearDebugBtn: byId("clearDebugBtn"),
 };
@@ -283,6 +284,7 @@ function startDashboardRealtime() {
   logDebug(
     `profile loaded • language=${state.profile?.language || "en"} incoming=${state.profile?.translateIncomingTo || "en"}`
   );
+  updateTranslationLegend();
   ensureTurnIceServers().catch(() => {
     setStatus(els.callStatus, "TURN unavailable, using fallback connectivity.");
   });
@@ -1181,7 +1183,7 @@ function setupDataChannel(channel) {
       );
       const translated = await translateText(payload.original, from, incomingTarget);
       const rendered = translated || "[translation unavailable]";
-      appendFeed(sender, `${payload.original} -> ${rendered}`);
+      appendFeed("incoming", rendered);
       logDebug(`translation rendered • "${rendered.slice(0, 80)}"`);
       if (!translated) {
         setStatus(
@@ -1500,16 +1502,18 @@ function stopRingtone() {
   }
 }
 
-function appendFeed(sender, text) {
+function appendFeed(kind, text) {
   if (!els.translationFeed) return;
-  const key = captionKeyForSender(sender);
+  const key = kind === "incoming" ? "incoming" : "outgoing";
   let p = els.translationFeed.querySelector(`[data-caption-key="${key}"]`);
   if (!p) {
     p = document.createElement("p");
     p.dataset.captionKey = key;
+    p.className = `caption-row ${key}`;
     els.translationFeed.appendChild(p);
   }
-  p.textContent = `${sender}: ${text}`;
+  p.textContent =
+    kind === "incoming" ? `Translated for you: ${text}` : `You said: ${text}`;
 }
 
 function logDebug(message) {
@@ -1547,11 +1551,6 @@ function clearDebugFeed() {
   renderDebugFeed();
 }
 
-function captionKeyForSender(sender) {
-  const normalized = String(sender || "remote").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
-  return normalized || "remote";
-}
-
 async function performTranslationFromText(spoken) {
   const channels = getOpenDataChannels();
   if (!channels.length) {
@@ -1576,7 +1575,15 @@ async function performTranslationFromText(spoken) {
       logDebug("translation payload send failed");
     }
   });
-  appendFeed("You", `${spoken} -> (sent)`);
+  appendFeed("outgoing", spoken);
+}
+
+function updateTranslationLegend() {
+  if (!els.translationLegend) return;
+  const myLanguage = state.profile?.language === "es" ? "Spanish" : "English";
+  const incomingLanguage = state.profile?.translateIncomingTo === "es" ? "Spanish" : "English";
+  els.translationLegend.textContent =
+    `You speak ${myLanguage}. Incoming translated captions appear here in ${incomingLanguage}.`;
 }
 
 function startRingback() {
