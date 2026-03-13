@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoiceBridge | Settings</title>
+    <link rel="stylesheet" href="styles.css?v=20260313-1" />
+  </head>
+  <body>
+    <main class="settings-shell">
+      <a class="back-link" href="dashboard.html">Back to Calls</a>
+
+      <section class="settings-card glass">
+        <div class="settings-header">
+          <div>
+            <p class="eyebrow">VoiceBridge</p>
+            <h1>Settings</h1>
+          </div>
+          <button id="logoutBtn" class="btn ghost" type="button">Log Out</button>
+        </div>
+
+        <div class="settings-summary">
+          <p id="settingsEmail" class="muted">-</p>
+          <p id="settingsCallId" class="id-pill">ID: -</p>
+        </div>
+
+        <section class="settings-section">
+          <h2>Language Preferences</h2>
+          <p class="muted">
+            These settings control the language you speak and the language you want incoming
+            translated captions to use.
+          </p>
+
+          <div class="input-grid">
+            <label>
+              My Language
+              <select id="languageSelect">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+              </select>
+            </label>
+
+            <label>
+              Incoming Translation To
+              <select id="incomingLanguageSelect">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="dial-row">
+            <button id="saveSettingsBtn" class="btn" type="button">Save Settings</button>
+          </div>
+
+          <p id="settingsStatus" class="status-line">Loading your settings...</p>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="settings.js?v=20260313-1"></script>
+  </body>
+</html>

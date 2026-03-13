@@ -15,7 +15,7 @@ Google Voice-style web calling app using `HTML/CSS/JS` + Firebase + server-side 
    - Outgoing ringing popup
    - In-call popup with controls
    - Call history with click-to-call + status badges
-   - Automatic EN/ES translation during active calls
+   - Automatic EN/ES translated captions during active calls
 
 ## Files
 
@@ -26,7 +26,7 @@ Google Voice-style web calling app using `HTML/CSS/JS` + Firebase + server-side 
 - `styles.css`: modern UI styling
 - `firebase-client.js`: Firebase initialization
 - `auth.js`: login/signup logic
-- `dashboard.js`: call logic, WebRTC, call logs, translation orchestration
+- `dashboard.js`: call logic, WebRTC, call logs, translated caption orchestration
 - `server.mjs`: static server + `/api/transcribe` backend endpoint
 - `.env.example`: server environment variable template
 - `package.json`: backend deps/scripts
@@ -164,7 +164,7 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 - This is an MVP scaffold and not telecom-grade production yet.
 - STT is production-style (server-side OpenAI transcription via `/api/transcribe`).
-- Translation uses Google Cloud Translation API via server endpoint `/api/translate`.
+- Translation uses Google Cloud Translation API via server endpoint `/api/translate` and renders translated captions in-call.
 - Backend API routes now require Firebase Auth bearer tokens and apply basic per-user/IP rate limits.
 - Production server middleware now includes `helmet`, strict CORS allowlisting, and `trust proxy`.
 - Rate limiting supports shared Redis (Upstash REST) when configured; otherwise falls back to in-memory limits.

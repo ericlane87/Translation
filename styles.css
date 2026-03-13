@@ -152,6 +152,14 @@ p {
   gap: 12px;
 }
 
+.settings-shell {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
 .back-link {
   color: #1b4f9a;
   text-decoration: none;
@@ -162,6 +170,29 @@ p {
   padding: 18px;
   display: grid;
   gap: 10px;
+}
+
+.settings-card {
+  padding: 18px;
+  display: grid;
+  gap: 18px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-summary {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 12px;
 }
 
 .input-grid {
