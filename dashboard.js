@@ -1703,6 +1703,10 @@ function shouldSendAudioChunkForTranscription() {
 
 function startAutoTranslate() {
   if (state.autoTranslateOn) return;
+  if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
+    logDebug("auto translation already running");
+    return;
+  }
   if (!state.localStream || !state.localStream.getAudioTracks().length) {
     logDebug("auto translation start failed • no microphone track");
     setStatus(els.callStatus, "No microphone stream available for auto translation.");
@@ -1720,12 +1724,9 @@ function startAutoTranslate() {
     return;
   }
 
-  state.autoTranslateOn = true;
-  logDebug(`auto translation started • mime=${mimeType}`);
-  setStatus(els.callStatus, "Connected • Auto translation on (server STT)");
-  startSpeechGate();
+  const recorderStream = new MediaStream(state.localStream.getAudioTracks());
+  const recorder = new MediaRecorder(recorderStream, { mimeType });
 
-  const recorder = new MediaRecorder(state.localStream, { mimeType });
   recorder.ondataavailable = async (event) => {
     if (!state.autoTranslateOn) return;
     if (!event.data || event.data.size < 1200) {
@@ -1770,6 +1771,10 @@ function startAutoTranslate() {
   state.mediaRecorder = recorder;
   try {
     recorder.start(2400);
+    state.autoTranslateOn = true;
+    logDebug(`auto translation started • mime=${mimeType}`);
+    setStatus(els.callStatus, "Connected • Auto translation on (server STT)");
+    startSpeechGate();
   } catch {
     state.autoTranslateOn = false;
     state.mediaRecorder = null;
