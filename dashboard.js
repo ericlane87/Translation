@@ -127,6 +127,8 @@ const els = {
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
   translationFeed: byId("translationFeed"),
+  debugFeed: byId("debugFeed"),
+  clearDebugBtn: byId("clearDebugBtn"),
 };
 
 const state = {
@@ -180,6 +182,7 @@ const state = {
   presenceHeartbeatTimer: null,
   audioUnlocked: false,
   audioUnlockHintShown: false,
+  debugEntries: [],
 };
 const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -210,6 +213,7 @@ els.toggleCameraBtn.addEventListener("click", () => {
 els.setupProfileBtn.addEventListener("click", setupMissingProfileFromForm);
 els.cancelOutgoingBtn.addEventListener("click", cancelOutgoingCall);
 els.addContactBtn?.addEventListener("click", saveContact);
+els.clearDebugBtn?.addEventListener("click", clearDebugFeed);
 els.remoteVideo.addEventListener("loadeddata", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("playing", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("pause", updateRemoteAvatarVisibility);
@@ -270,6 +274,9 @@ onAuthStateChanged(auth, async (user) => {
 
 function startDashboardRealtime() {
   updateApiBaseStatus();
+  logDebug(
+    `profile loaded • language=${state.profile?.language || "en"} incoming=${state.profile?.translateIncomingTo || "en"}`
+  );
   ensureTurnIceServers().catch(() => {
     setStatus(els.callStatus, "TURN unavailable, using fallback connectivity.");
   });
@@ -1152,6 +1159,7 @@ function isLikelyInsecureOrigin() {
 
 function setupDataChannel(channel) {
   channel.onopen = () => {
+    logDebug("data channel open");
     setStatus(els.callStatus, "Connected • Translation captions active");
   };
   channel.onmessage = async (event) => {
@@ -1162,17 +1170,21 @@ function setupDataChannel(channel) {
       const sender = payload.sender || "Remote";
       const from = payload.from === "es" ? "es" : "en";
       const incomingTarget = resolveIncomingTargetLanguage(from);
+      logDebug(
+        `translation payload received • from=${from} target=${incomingTarget} text="${String(payload.original).slice(0, 80)}"`
+      );
       const translated = await translateText(payload.original, from, incomingTarget);
       const rendered = translated || "[translation unavailable]";
       appendFeed(sender, `${payload.original} -> ${rendered}`);
+      logDebug(`translation rendered • "${rendered.slice(0, 80)}"`);
       if (!translated) {
         setStatus(
           els.callStatus,
           "Live translation unavailable right now (backend offline). Captions will show original text."
         );
       }
-    } catch {
-      // ignore bad payload
+    } catch (err) {
+      logDebug(`data channel message failed • ${err?.message || "bad payload"}`);
     }
   };
 }
@@ -1494,6 +1506,41 @@ function appendFeed(sender, text) {
   p.textContent = `${sender}: ${text}`;
 }
 
+function logDebug(message) {
+  const stamp = new Date().toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  state.debugEntries.unshift(`${stamp} • ${message}`);
+  state.debugEntries = state.debugEntries.slice(0, 40);
+  renderDebugFeed();
+}
+
+function renderDebugFeed() {
+  if (!els.debugFeed) return;
+  els.debugFeed.innerHTML = "";
+
+  if (!state.debugEntries.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No debug events yet.";
+    els.debugFeed.appendChild(empty);
+    return;
+  }
+
+  state.debugEntries.forEach((entry) => {
+    const row = document.createElement("p");
+    row.textContent = entry;
+    els.debugFeed.appendChild(row);
+  });
+}
+
+function clearDebugFeed() {
+  state.debugEntries = [];
+  renderDebugFeed();
+}
+
 function captionKeyForSender(sender) {
   const normalized = String(sender || "remote").toLowerCase().replace(/[^a-z0-9_-]/g, "-");
   return normalized || "remote";
@@ -1502,6 +1549,7 @@ function captionKeyForSender(sender) {
 async function performTranslationFromText(spoken) {
   const channels = getOpenDataChannels();
   if (!channels.length) {
+    logDebug("translation send skipped • data channel not ready");
     setStatus(els.callStatus, "Translation channel not ready");
     return;
   }
@@ -1517,8 +1565,9 @@ async function performTranslationFromText(spoken) {
   channels.forEach((channel) => {
     try {
       channel.send(JSON.stringify(payload));
+      logDebug(`translation payload sent • from=${from} text="${spoken.slice(0, 80)}"`);
     } catch {
-      // Ignore channel send failures.
+      logDebug("translation payload send failed");
     }
   });
   appendFeed("You", `${spoken} -> (sent)`);
@@ -1655,44 +1704,66 @@ function shouldSendAudioChunkForTranscription() {
 function startAutoTranslate() {
   if (state.autoTranslateOn) return;
   if (!state.localStream || !state.localStream.getAudioTracks().length) {
+    logDebug("auto translation start failed • no microphone track");
     setStatus(els.callStatus, "No microphone stream available for auto translation.");
     return;
   }
   if (typeof MediaRecorder === "undefined") {
+    logDebug("auto translation unavailable • MediaRecorder missing");
     setStatus(els.callStatus, "Auto translation unavailable in this browser.");
     return;
   }
   const mimeType = pickRecorderMimeType();
   if (!mimeType) {
+    logDebug("auto translation unavailable • no supported recorder mime type");
     setStatus(els.callStatus, "MediaRecorder format not supported in this browser.");
     return;
   }
 
   state.autoTranslateOn = true;
+  logDebug(`auto translation started • mime=${mimeType}`);
   setStatus(els.callStatus, "Connected • Auto translation on (server STT)");
   startSpeechGate();
 
   const recorder = new MediaRecorder(state.localStream, { mimeType });
   recorder.ondataavailable = async (event) => {
     if (!state.autoTranslateOn) return;
-    if (!event.data || event.data.size < 1200) return;
-    if (!shouldSendAudioChunkForTranscription()) return;
-    if (state.transcribeBusy) return;
+    if (!event.data || event.data.size < 1200) {
+      logDebug(`audio chunk skipped • too small (${event.data?.size || 0} bytes)`);
+      return;
+    }
+    if (!shouldSendAudioChunkForTranscription()) {
+      logDebug("audio chunk skipped • no recent speech detected");
+      return;
+    }
+    if (state.transcribeBusy) {
+      logDebug("audio chunk skipped • STT already in progress");
+      return;
+    }
 
     state.transcribeBusy = true;
     try {
+      logDebug(`stt request started • chunk=${event.data.size} bytes`);
       const spoken = await transcribeAudioBlob(event.data);
-      if (!spoken) return;
-      if (spoken === state.lastTranscript) return;
+      if (!spoken) {
+        logDebug("stt returned empty text");
+        return;
+      }
+      logDebug(`stt response text • "${spoken.slice(0, 80)}"`);
+      if (spoken === state.lastTranscript) {
+        logDebug("stt duplicate ignored");
+        return;
+      }
       state.lastTranscript = spoken;
       await performTranslationFromText(spoken);
-    } catch {
-      // Ignore per-chunk failures.
+    } catch (err) {
+      logDebug(`stt/translation pipeline failed • ${err?.message || "unknown error"}`);
     } finally {
       state.transcribeBusy = false;
     }
   };
   recorder.onerror = () => {
+    logDebug("media recorder error");
     setStatus(els.callStatus, "Auto translation recorder error. Try reconnecting call.");
   };
 
@@ -1702,12 +1773,14 @@ function startAutoTranslate() {
   } catch {
     state.autoTranslateOn = false;
     state.mediaRecorder = null;
+    logDebug("auto translation failed to start recorder");
     setStatus(els.callStatus, "Auto translation failed to start.");
   }
 }
 
 function stopAutoTranslate() {
   state.autoTranslateOn = false;
+  logDebug("auto translation stopped");
   state.lastTranscript = "";
   state.transcribeBusy = false;
   stopSpeechGate();
@@ -2007,7 +2080,16 @@ async function transcribeAudioBlob(blob) {
   });
 
   if (!resp.ok) {
-    throw new Error("Transcription endpoint failed");
+    let details = "";
+    try {
+      const data = await resp.json();
+      details = String(data?.error || "").trim();
+    } catch {
+      details = "";
+    }
+    throw new Error(
+      `Transcription endpoint failed (${resp.status})${details ? `: ${details}` : ""}`
+    );
   }
 
   const data = await resp.json();
@@ -2023,12 +2105,24 @@ async function translateText(text, from, to) {
       headers,
       body: JSON.stringify({ text, from, to }),
     });
-    if (!resp.ok) throw new Error("Translation request failed");
+    if (!resp.ok) {
+      let details = "";
+      try {
+        const data = await resp.json();
+        details = String(data?.error || "").trim();
+      } catch {
+        details = "";
+      }
+      throw new Error(
+        `Translation request failed (${resp.status})${details ? `: ${details}` : ""}`
+      );
+    }
     const data = await resp.json();
     const out = String(data?.translatedText || "").trim();
     if (!out) return null;
     return out;
-  } catch {
+  } catch (err) {
+    logDebug(`translation request failed • ${err?.message || "unknown error"}`);
     return null;
   }
 }

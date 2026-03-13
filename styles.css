@@ -471,6 +471,36 @@ video {
   font-size: 13px;
 }
 
+.debug-feed-shell {
+  background: #fffdf7;
+}
+
+.debug-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.debug-feed {
+  max-height: 160px;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+}
+
+.debug-feed p {
+  margin: 0;
+  padding: 8px;
+  background: #fff6df;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  color: #5c4514;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .incoming-modal {
   position: fixed;
   inset: 0;
