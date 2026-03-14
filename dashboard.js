@@ -845,7 +845,6 @@ async function answerIncomingCall() {
     primeRemotePlayback();
     hideIncomingModal();
     hideOutgoingModal();
-    showCallModal();
     setStatus(els.callStatus, "Connecting...");
     stopRingtone();
     closeIncomingNotification();
@@ -856,8 +855,10 @@ async function answerIncomingCall() {
     });
     await loadRemoteProfile(acceptedCall.callerUid);
     await setupPeer(false);
+    state.currentCallId = acceptedCall.id;
     state.remotePeerId = acceptedCall.callerId || "Remote";
     setRemoteAvatarLabel(state.remotePeerId);
+    showCallModal();
 
     const offerCandidatesRef = collection(db, "calls", acceptedCall.id, "offerCandidates");
     const answerCandidatesRef = collection(db, "calls", acceptedCall.id, "answerCandidates");
@@ -879,8 +880,6 @@ async function answerIncomingCall() {
       answeredAt: serverTimestamp(),
       receiverMediaReadyAt: serverTimestamp(),
     });
-
-    state.currentCallId = acceptedCall.id;
 
     state.unsubCandidatesB = onSnapshot(offerCandidatesRef, (snap) => {
       snap.docChanges().forEach(async (change) => {
@@ -983,11 +982,15 @@ async function endCall() {
     return;
   }
 
-  await updateDoc(doc(db, "calls", state.currentCallId), {
-    status: "ended",
-    endedAt: serverTimestamp(),
-    endedReason: "manual_end",
-  });
+  try {
+    await updateDoc(doc(db, "calls", state.currentCallId), {
+      status: "ended",
+      endedAt: serverTimestamp(),
+      endedReason: "manual_end",
+    });
+  } catch {
+    // Fall back to ending locally if the signaling write fails.
+  }
 
   await teardownCall();
   setStatus(els.callStatus, "Ended");
