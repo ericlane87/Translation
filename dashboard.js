@@ -669,15 +669,18 @@ function renderCallLogs() {
   rows.forEach((call) => {
     const outgoing = call.callerUid === state.user.uid;
     const counterpartId = outgoing ? call.receiverId : call.callerId;
-    const badge = getHistoryBadge(call, outgoing);
+    const marker = getHistoryMarker(call, outgoing);
     const whenText = formatCallDateTime(call.createdAt);
 
     const btn = document.createElement("button");
     btn.className = "log-item";
     btn.innerHTML = `
-      <span>${outgoing ? "Outgoing" : "Incoming"} • ${counterpartId}</span>
+      <span class="log-title">
+        <span class="history-direction ${marker.directionClass}" aria-hidden="true">${marker.directionSymbol}</span>
+        <span>${counterpartId}</span>
+      </span>
       <span class="log-meta">
-        <span class="badge ${badge.className}">${badge.label}</span>
+        <span class="history-state ${marker.stateClass}" aria-label="${marker.label}">${marker.stateSymbol}</span>
         <span>${whenText}</span>
       </span>
     `;
@@ -1475,24 +1478,54 @@ function hideOutgoingModal() {
   setModalVisible(els.outgoingModal, false);
 }
 
-function getHistoryBadge(call, outgoing) {
+function getHistoryMarker(call, outgoing) {
   if (call.status === "rejected") {
-    return { label: "Declined", className: "badge-declined" };
+    return {
+      label: outgoing ? "Declined" : "Rejected",
+      directionSymbol: outgoing ? "↗" : "↘",
+      directionClass: outgoing ? "history-outgoing" : "history-incoming",
+      stateSymbol: "×",
+      stateClass: "history-declined",
+    };
   }
 
   if (!outgoing && call.status === "ended" && !call.answeredAt) {
-    return { label: "Missed", className: "badge-missed" };
+    return {
+      label: "Missed",
+      directionSymbol: "↘",
+      directionClass: "history-missed",
+      stateSymbol: "!",
+      stateClass: "history-missed",
+    };
   }
 
   if (call.status === "ringing") {
-    return { label: "Ringing", className: "badge-ringing" };
+    return {
+      label: "Ringing",
+      directionSymbol: outgoing ? "↗" : "↘",
+      directionClass: outgoing ? "history-outgoing" : "history-incoming",
+      stateSymbol: "•",
+      stateClass: "history-ringing",
+    };
   }
 
   if (call.status === "active" || call.answeredAt) {
-    return { label: "Connected", className: "badge-connected" };
+    return {
+      label: "Connected",
+      directionSymbol: outgoing ? "↗" : "↘",
+      directionClass: outgoing ? "history-outgoing" : "history-incoming",
+      stateSymbol: "✓",
+      stateClass: "history-connected",
+    };
   }
 
-  return { label: "Ended", className: "badge-ended" };
+  return {
+    label: "Ended",
+    directionSymbol: outgoing ? "↗" : "↘",
+    directionClass: outgoing ? "history-outgoing" : "history-incoming",
+    stateSymbol: "–",
+    stateClass: "history-ended",
+  };
 }
 
 function ensureNotificationPermission() {

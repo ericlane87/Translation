@@ -772,6 +772,72 @@ label {
   transform: translateY(-1px);
 }
 
+.log-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.history-direction {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #edf3f8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.history-outgoing {
+  color: #1b7f57;
+}
+
+.history-incoming {
+  color: #2d6ecf;
+}
+
+.history-missed {
+  color: #c54141;
+}
+
+.history-state {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid transparent;
+}
+
+.history-ringing {
+  color: #1f6ec0;
+  background: #eef4ff;
+  border-color: #c5d7f4;
+}
+
+.history-connected {
+  color: #12744a;
+  background: #ebf7ef;
+  border-color: #c1e2cc;
+}
+
+.history-ended {
+  color: #5f6f84;
+  background: #f1f4f7;
+  border-color: #d8dfe7;
+}
+
+.history-declined,
+.history-state.history-missed {
+  color: #b33b3b;
+  background: #fdeeee;
+  border-color: #efc2c2;
+}
+
 .log-meta {
   display: inline-flex;
   align-items: center;
