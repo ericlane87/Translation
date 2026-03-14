@@ -127,6 +127,7 @@ const els = {
   enablePermissionsBtn: byId("enablePermissionsBtn"),
   incomingStatus: byId("incomingStatus"),
   callStatus: byId("callStatus"),
+  callHint: byId("callHint"),
   callLogList: byId("callLogList"),
   localVideo: byId("localVideo"),
   remoteVideo: byId("remoteVideo"),
@@ -187,6 +188,16 @@ const state = {
   vadAnalyser: null,
   vadTimer: null,
   vadSampleBuffer: null,
+  localSpeechActive: false,
+  localSpeechStartedAt: 0,
+  remoteVadContext: null,
+  remoteVadSource: null,
+  remoteVadAnalyser: null,
+  remoteVadTimer: null,
+  remoteVadSampleBuffer: null,
+  remoteSpeechActive: false,
+  lastRemoteSpeechAt: 0,
+  overlapWarningAt: 0,
   captureContext: null,
   captureSource: null,
   captureProcessor: null,
@@ -1272,6 +1283,7 @@ function playRemoteMedia() {
     els.remoteAudio.volume = 1;
     els.remoteAudio.play().catch(() => {});
   }
+  startRemoteSpeechGate();
 }
 
 function toggleMute() {
@@ -1372,6 +1384,7 @@ async function teardownCall() {
   if (els.remoteAudio) {
     els.remoteAudio.srcObject = null;
   }
+  stopRemoteSpeechGate();
   stopAutoTranslate();
   hideSubtitleOverlay();
   stopRingback();
@@ -1425,6 +1438,12 @@ function setStatus(el, text) {
   el.textContent = text;
 }
 
+function setCallHint(text, tone = "info") {
+  if (!els.callHint) return;
+  els.callHint.textContent = text;
+  els.callHint.classList.toggle("call-hint-warning", tone === "warning");
+}
+
 function t(key) {
   const lang = locale.code === "es" ? "es" : "en";
   return i18n[lang][key] || i18n.en[key] || key;
@@ -1454,6 +1473,8 @@ function applyDashboardLocale() {
 
 function showCallModal() {
   resetTranslationUi();
+  state.overlapWarningAt = 0;
+  setCallHint("Best results: use headphones and let one person speak at a time.");
   setModalVisible(els.callModal, true);
   updateRemoteAvatarVisibility();
   if (!state.devCallPreview) {
@@ -1466,6 +1487,8 @@ function hideCallModal() {
   if (!state.devCallPreview) {
     stopAutoTranslate();
   }
+  state.overlapWarningAt = 0;
+  setCallHint("Best results: use headphones and let one person speak at a time.");
   resetTranslationUi();
 }
 
@@ -1705,7 +1728,7 @@ function showSubtitleOverlay(text) {
   }
   state.subtitleOverlayTimer = window.setTimeout(() => {
     hideSubtitleOverlay();
-  }, 4200);
+  }, 5200);
 }
 
 function hideSubtitleOverlay() {
@@ -1788,7 +1811,7 @@ function updateTranslationLegend() {
     ? ` The other person should receive your captions in ${remoteIncomingLanguage}.`
     : "";
   els.translationLegend.textContent =
-    `You speak ${myLanguage}. Incoming translated captions appear here in ${incomingLanguage}.${remoteLine}`;
+    `You speak ${myLanguage}. Incoming translated captions appear here in ${incomingLanguage}.${remoteLine} Best results come from headphones and turn-taking.`;
 }
 
 function translatedForYouLabel() {
@@ -1877,10 +1900,13 @@ function startSpeechGate() {
     state.vadSource = source;
     state.vadAnalyser = analyser;
     state.vadSampleBuffer = samples;
-    state.lastSpeechAt = Date.now();
+    state.lastSpeechAt = 0;
+    state.localSpeechActive = false;
+    state.localSpeechStartedAt = 0;
 
     state.vadTimer = window.setInterval(() => {
       if (!state.autoTranslateOn || !state.vadAnalyser || !state.vadSampleBuffer) return;
+      const now = Date.now();
       state.vadAnalyser.getByteTimeDomainData(state.vadSampleBuffer);
 
       let sumSquares = 0;
@@ -1890,8 +1916,14 @@ function startSpeechGate() {
       }
 
       const rms = Math.sqrt(sumSquares / state.vadSampleBuffer.length);
-      if (rms > 0.02) {
-        state.lastSpeechAt = Date.now();
+      if (rms > 0.024) {
+        state.lastSpeechAt = now;
+        if (!state.localSpeechActive) {
+          state.localSpeechActive = true;
+          state.localSpeechStartedAt = now;
+        }
+      } else if (state.localSpeechActive && now - state.lastSpeechAt > 280) {
+        state.localSpeechActive = false;
       }
     }, 140);
   } catch {
@@ -1930,12 +1962,94 @@ function stopSpeechGate() {
   state.vadAnalyser = null;
   state.vadSampleBuffer = null;
   state.lastSpeechAt = 0;
+  state.localSpeechActive = false;
+  state.localSpeechStartedAt = 0;
 }
 
 function shouldSendAudioChunkForTranscription() {
   if (!state.vadAnalyser) return true;
   const now = Date.now();
-  return now - state.lastSpeechAt <= 900;
+  if (now - state.lastSpeechAt > 700) return false;
+  if (!state.localSpeechStartedAt) return false;
+  if (now - state.localSpeechStartedAt < 320) return false;
+  if (hasRecentRemoteSpeech()) return false;
+  return true;
+}
+
+function startRemoteSpeechGate() {
+  stopRemoteSpeechGate();
+  if (!state.remoteAudioStream || !state.remoteAudioStream.getAudioTracks().length) return;
+  if (typeof AudioContext === "undefined" && typeof webkitAudioContext === "undefined") return;
+
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const source = ctx.createMediaStreamSource(state.remoteAudioStream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.8;
+    source.connect(analyser);
+
+    state.remoteVadContext = ctx;
+    state.remoteVadSource = source;
+    state.remoteVadAnalyser = analyser;
+    state.remoteVadSampleBuffer = new Uint8Array(analyser.fftSize);
+    state.lastRemoteSpeechAt = 0;
+    state.remoteSpeechActive = false;
+
+    state.remoteVadTimer = window.setInterval(() => {
+      if (!state.remoteVadAnalyser || !state.remoteVadSampleBuffer) return;
+      const now = Date.now();
+      state.remoteVadAnalyser.getByteTimeDomainData(state.remoteVadSampleBuffer);
+
+      let sumSquares = 0;
+      for (let i = 0; i < state.remoteVadSampleBuffer.length; i += 1) {
+        const centered = (state.remoteVadSampleBuffer[i] - 128) / 128;
+        sumSquares += centered * centered;
+      }
+
+      const rms = Math.sqrt(sumSquares / state.remoteVadSampleBuffer.length);
+      if (rms > 0.028) {
+        state.lastRemoteSpeechAt = now;
+        state.remoteSpeechActive = true;
+      } else if (state.remoteSpeechActive && now - state.lastRemoteSpeechAt > 260) {
+        state.remoteSpeechActive = false;
+      }
+    }, 140);
+  } catch {
+    // Remote playback analysis is optional.
+  }
+}
+
+function stopRemoteSpeechGate() {
+  if (state.remoteVadTimer) {
+    window.clearInterval(state.remoteVadTimer);
+    state.remoteVadTimer = null;
+  }
+  if (state.remoteVadSource) {
+    try {
+      state.remoteVadSource.disconnect();
+    } catch {}
+  }
+  if (state.remoteVadAnalyser) {
+    try {
+      state.remoteVadAnalyser.disconnect();
+    } catch {}
+  }
+  if (state.remoteVadContext) {
+    state.remoteVadContext.close().catch(() => {});
+  }
+  state.remoteVadContext = null;
+  state.remoteVadSource = null;
+  state.remoteVadAnalyser = null;
+  state.remoteVadSampleBuffer = null;
+  state.remoteSpeechActive = false;
+  state.lastRemoteSpeechAt = 0;
+}
+
+function hasRecentRemoteSpeech() {
+  if (!state.remoteVadAnalyser) return false;
+  return Date.now() - state.lastRemoteSpeechAt <= 600;
 }
 
 function startAutoTranslate() {
@@ -2046,7 +2160,12 @@ async function flushCapturedAudioChunk() {
     return;
   }
   if (!shouldSendAudioChunkForTranscription()) {
-    logDebug("audio chunk skipped • no recent speech detected");
+    if (hasRecentRemoteSpeech()) {
+      maybeShowOverlapHint();
+      logDebug("audio chunk skipped • remote audio is dominant");
+    } else {
+      logDebug("audio chunk skipped • no recent speech detected");
+    }
     state.captureChunks = [];
     state.captureChunkSamples = 0;
     return;
@@ -2110,6 +2229,18 @@ function sanitizeTranscript(text, lang) {
   }
 
   return value;
+}
+
+function maybeShowOverlapHint() {
+  const now = Date.now();
+  if (now - state.overlapWarningAt < 6000) return;
+  state.overlapWarningAt = now;
+  setCallHint("Remote audio is loud on this device. Headphones or turn-taking will improve captions.", "warning");
+  window.setTimeout(() => {
+    if (Date.now() - state.overlapWarningAt >= 5000) {
+      setCallHint("Best results: use headphones and let one person speak at a time.");
+    }
+  }, 5200);
 }
 
 function encodeWavBlob(samples, sampleRate) {

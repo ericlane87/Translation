@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VoiceBridge | Dashboard</title>
-    <link rel="stylesheet" href="styles.css?v=20260313-2" />
+    <link rel="stylesheet" href="styles.css?v=20260314-1" />
   </head>
   <body>
     <div class="dash-shell">
@@ -137,6 +137,9 @@
           <button id="toggleCameraBtn" class="btn ghost">Camera Off</button>
           <button id="endCallBtn" class="btn danger">End</button>
         </div>
+        <p id="callHint" class="call-hint">
+          Best results: use headphones and let one person speak at a time.
+        </p>
         <div class="translation-feed">
           <h3>Live Translation Captions</h3>
           <p id="translationLegend" class="muted">
@@ -175,6 +178,6 @@
     </div>
 
     <script src="app-config.js?v=20260313-6"></script>
-    <script type="module" src="dashboard.js?v=20260313-16"></script>
+    <script type="module" src="dashboard.js?v=20260314-1"></script>
   </body>
 </html>

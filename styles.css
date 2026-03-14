@@ -982,6 +982,21 @@ video {
   font-weight: 600;
 }
 
+.call-hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 34, 56, 0.08);
+  color: #537089;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.call-hint.call-hint-warning {
+  background: rgba(204, 75, 66, 0.12);
+  color: #9e3b35;
+}
+
 .translation-feed {
   border: 1px solid var(--line);
   border-radius: 22px;
