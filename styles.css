@@ -559,6 +559,8 @@ video {
   padding: 20px;
   display: grid;
   gap: 14px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
 }
 
 .outgoing-modal {
@@ -603,5 +605,24 @@ video {
 
   .video-grid {
     grid-template-columns: 1fr;
+  }
+
+  .call-modal {
+    place-items: start center;
+    overflow: auto;
+  }
+
+  .call-card {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    padding: 14px;
+  }
+
+  #translationFeed {
+    max-height: 180px;
+  }
+
+  .debug-feed {
+    max-height: 140px;
   }
 }

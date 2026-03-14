@@ -1910,7 +1910,8 @@ async function flushCapturedAudioChunk() {
   state.transcribeBusy = true;
   try {
     logDebug(`stt request started • wav=${wavBlob.size} bytes`);
-    const spoken = await transcribeAudioBlob(wavBlob);
+    const spokenRaw = await transcribeAudioBlob(wavBlob);
+    const spoken = sanitizeTranscript(spokenRaw, state.profile?.language || "en");
     if (!spoken) {
       logDebug("stt returned empty text");
       return;
@@ -1935,6 +1936,24 @@ function mergeFloat32Chunks(chunks, totalLength) {
     offset += chunk.length;
   });
   return merged;
+}
+
+function sanitizeTranscript(text, lang) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+
+  const normalizedLang = lang === "es" ? "es" : "en";
+  const hasLatin = /[A-Za-z\u00C0-\u024F\u1E00-\u1EFF]/.test(value);
+  const hasCjk = /[\u3400-\u9FFF]/.test(value);
+  const hasHangul = /[\uAC00-\uD7AF]/.test(value);
+  const hasKana = /[\u3040-\u30FF]/.test(value);
+
+  if ((hasCjk || hasHangul || hasKana) && !hasLatin) {
+    logDebug(`stt transcript ignored • unexpected script for ${normalizedLang}: "${value.slice(0, 40)}"`);
+    return "";
+  }
+
+  return value;
 }
 
 function encodeWavBlob(samples, sampleRate) {
