@@ -673,7 +673,7 @@ function renderCallLogs() {
     const whenText = formatCallDateTime(call.createdAt);
 
     const btn = document.createElement("button");
-    btn.className = "log-item";
+    btn.className = `log-item${marker.rowClass ? ` ${marker.rowClass}` : ""}`;
     btn.innerHTML = `
       <span class="log-title">
         <span class="history-direction ${marker.directionClass}" aria-hidden="true">${marker.directionSymbol}</span>
@@ -1486,6 +1486,7 @@ function getHistoryMarker(call, outgoing) {
       directionClass: outgoing ? "history-outgoing" : "history-incoming",
       stateSymbol: "×",
       stateClass: "history-declined",
+      rowClass: "",
     };
   }
 
@@ -1496,6 +1497,7 @@ function getHistoryMarker(call, outgoing) {
       directionClass: "history-missed",
       stateSymbol: "!",
       stateClass: "history-missed",
+      rowClass: "log-item-missed",
     };
   }
 
@@ -1506,6 +1508,7 @@ function getHistoryMarker(call, outgoing) {
       directionClass: outgoing ? "history-outgoing" : "history-incoming",
       stateSymbol: "•",
       stateClass: "history-ringing",
+      rowClass: "",
     };
   }
 
@@ -1516,6 +1519,7 @@ function getHistoryMarker(call, outgoing) {
       directionClass: outgoing ? "history-outgoing" : "history-incoming",
       stateSymbol: "✓",
       stateClass: "history-connected",
+      rowClass: "",
     };
   }
 
@@ -1525,6 +1529,7 @@ function getHistoryMarker(call, outgoing) {
     directionClass: outgoing ? "history-outgoing" : "history-incoming",
     stateSymbol: "–",
     stateClass: "history-ended",
+    rowClass: "",
   };
 }
 

@@ -772,6 +772,15 @@ label {
   transform: translateY(-1px);
 }
 
+.log-item-missed {
+  border-color: rgba(208, 88, 88, 0.36);
+  background: linear-gradient(180deg, rgba(255, 241, 241, 0.94), rgba(255, 247, 247, 0.9));
+}
+
+.log-item-missed .log-title {
+  color: #a23737;
+}
+
 .log-title {
   display: inline-flex;
   align-items: center;
