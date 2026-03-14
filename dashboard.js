@@ -1728,7 +1728,7 @@ function showSubtitleOverlay(text) {
   }
   state.subtitleOverlayTimer = window.setTimeout(() => {
     hideSubtitleOverlay();
-  }, 5200);
+  }, 2000);
 }
 
 function hideSubtitleOverlay() {
