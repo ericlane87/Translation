@@ -4,51 +4,49 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VoiceBridge | Login</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260313-3" />
   </head>
   <body>
-    <main class="auth-shell">
-      <a class="back-link" href="index.html">Back to Home</a>
+    <main class="auth-shell auth-shell-split">
+      <section class="auth-side">
+        <div class="auth-brand-row">
+          <a class="brand-lockup brand-lockup-link" href="index.html">
+            <div class="brand-mark">V</div>
+            <div>
+              <div class="brand">VoiceBridge</div>
+              <p class="brand-subtitle">Live translated calling for everyday conversations</p>
+            </div>
+          </a>
+        </div>
+        <a class="back-link" href="index.html">Back to Home</a>
+        <p class="eyebrow">Welcome Back</p>
+        <h1>Log in to continue your translated calls.</h1>
+        <p class="muted auth-copy">
+          Pick up where you left off with your saved contacts, call history, and language settings.
+        </p>
+        <div class="auth-side-card">
+          <strong>What you get</strong>
+          <p>Fast access to your call dashboard, saved IDs, and live translated captions.</p>
+        </div>
+      </section>
 
       <section class="auth-card glass" id="loginPanel">
-        <h1>Customer Login</h1>
-        <p class="muted">Existing customers sign in here.</p>
+        <div class="auth-tabs">
+          <a class="auth-tab auth-tab-active" href="auth.html">Log In</a>
+          <a class="auth-tab" href="signup.html">Create Account</a>
+        </div>
+        <h2>Customer Login</h2>
+        <p class="muted">Use the email and password tied to your VoiceBridge account.</p>
         <div class="input-grid">
           <input id="loginEmail" type="email" placeholder="Email" autocomplete="email" />
           <input id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
         </div>
         <button id="loginBtn" class="btn full">Log In</button>
+        <p class="muted auth-switch">Need an account? <a class="back-link" href="signup.html">Create one here</a>.</p>
+        <p id="authStatus" class="status-line">Ready</p>
       </section>
-
-      <section class="auth-card glass" id="signupPanel">
-        <h2>Create Account + Pick ID</h2>
-        <p class="muted">Your call ID is set during signup.</p>
-        <div class="input-grid">
-          <input id="signupEmail" type="email" placeholder="Email" autocomplete="email" />
-          <input id="signupPassword" type="password" placeholder="Password" autocomplete="new-password" />
-          <input id="signupPassword2" type="password" placeholder="Confirm Password" autocomplete="new-password" />
-          <input id="signupCallId" type="text" placeholder="Choose Call ID (e.g. alex-77)" />
-          <label>
-            My Language
-            <select id="signupLanguage">
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-            </select>
-          </label>
-          <label>
-            Incoming Translation To
-            <select id="signupIncomingLanguage">
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-            </select>
-          </label>
-        </div>
-        <button id="signupBtn" class="btn full">Create Account</button>
-      </section>
-
-      <p id="authStatus" class="status-line">Ready</p>
     </main>
 
-    <script type="module" src="auth.js"></script>
+    <script type="module" src="auth.js?v=20260313-2"></script>
   </body>
 </html>

@@ -33,11 +33,11 @@ onAuthStateChanged(auth, (user) => {
 });
 
 if (window.location.hash === "#signup") {
-  byId("signupPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.location.href = "signup.html";
 }
 
-els.loginBtn.addEventListener("click", login);
-els.signupBtn.addEventListener("click", signup);
+els.loginBtn?.addEventListener("click", login);
+els.signupBtn?.addEventListener("click", signup);
 
 async function login() {
   const email = els.loginEmail.value.trim();
