@@ -628,9 +628,6 @@ function setContactFormVisible(visible) {
   if (!els.contactDrawer) return;
   els.contactDrawer.classList.toggle("hidden", !visible);
   els.contactDrawer.setAttribute("aria-hidden", visible ? "false" : "true");
-  if (els.toggleContactFormBtn) {
-    els.toggleContactFormBtn.textContent = visible ? "Close" : "Create Contact";
-  }
   if (visible) {
     window.setTimeout(() => {
       els.contactNameInput?.focus();

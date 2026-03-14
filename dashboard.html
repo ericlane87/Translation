@@ -65,9 +65,17 @@
           <h2 id="contactsTitle">Contacts</h2>
           <div class="section-head">
             <p id="contactsStatus" class="status-line">Add a contact to call faster.</p>
-            <button id="toggleContactFormBtn" class="btn" type="button">Create Contact</button>
           </div>
           <div id="contactsList" class="contacts-list"></div>
+          <button
+            id="toggleContactFormBtn"
+            class="contact-fab"
+            type="button"
+            aria-label="Create Contact"
+            title="Create Contact"
+          >
+            +
+          </button>
         </section>
 
         <section class="panel glass span-2">
@@ -147,10 +155,10 @@
       </div>
     </div>
 
-    <div id="contactDrawer" class="contact-drawer-shell hidden" aria-hidden="true">
-      <div id="contactDrawerBackdrop" class="contact-drawer-backdrop"></div>
-      <aside class="contact-drawer glass">
-        <div class="contact-drawer-head">
+    <div id="contactDrawer" class="contact-modal-shell hidden" aria-hidden="true">
+      <div id="contactDrawerBackdrop" class="contact-modal-backdrop"></div>
+      <aside class="contact-modal glass">
+        <div class="contact-modal-head">
           <div>
             <p class="eyebrow">VoiceBridge</p>
             <h2>Create Contact</h2>
@@ -167,6 +175,6 @@
     </div>
 
     <script src="app-config.js?v=20260313-6"></script>
-    <script type="module" src="dashboard.js?v=20260313-14"></script>
+    <script type="module" src="dashboard.js?v=20260313-15"></script>
   </body>
 </html>

@@ -336,6 +336,7 @@ label {
   gap: 14px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.76));
   box-shadow: var(--shadow-md);
+  position: relative;
 }
 
 .panel h2 {
@@ -346,7 +347,7 @@ label {
 .section-head {
   display: flex;
   align-items: start;
-  justify-content: space-between;
+  justify-content: start;
   gap: 14px;
 }
 
@@ -384,6 +385,25 @@ label {
   gap: 10px;
   max-height: 320px;
   overflow: auto;
+}
+
+.contact-fab {
+  position: absolute;
+  right: 26px;
+  bottom: 26px;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #22a06b, #1b7f57);
+  color: #fff;
+  font-size: 34px;
+  line-height: 1;
+  box-shadow: 0 18px 36px rgba(27, 127, 87, 0.28);
+}
+
+.contact-fab:hover {
+  background: linear-gradient(180deg, #1f915f, #176f4d);
 }
 
 .contact-item {
@@ -708,34 +728,35 @@ video {
   text-align: center;
 }
 
-.contact-drawer-shell {
+.contact-modal-shell {
   position: fixed;
   inset: 0;
   z-index: 58;
+  display: grid;
+  place-items: center;
+  padding: 16px;
 }
 
-.contact-drawer-backdrop {
+.contact-modal-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(8, 16, 28, 0.32);
 }
 
-.contact-drawer {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  bottom: 16px;
-  width: min(420px, calc(100vw - 24px));
+.contact-modal {
+  position: relative;
+  width: min(420px, 100%);
   padding: 22px;
   display: grid;
   align-content: start;
   gap: 16px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 249, 252, 0.88));
   box-shadow: 0 30px 80px rgba(21, 41, 66, 0.22);
-  animation: drawer-slide-in 180ms ease;
+  animation: contact-modal-in 180ms ease;
+  z-index: 1;
 }
 
-.contact-drawer-head {
+.contact-modal-head {
   display: flex;
   align-items: start;
   justify-content: space-between;
@@ -746,14 +767,14 @@ video {
   display: none !important;
 }
 
-@keyframes drawer-slide-in {
+@keyframes contact-modal-in {
   from {
     opacity: 0;
-    transform: translateX(20px);
+    transform: translateY(16px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -815,14 +836,18 @@ video {
     grid-template-columns: 1fr;
   }
 
-  .contact-drawer {
-    top: auto;
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    width: auto;
+  .contact-modal {
+    width: 100%;
     max-height: min(78vh, 560px);
     overflow: auto;
+  }
+
+  .contact-fab {
+    right: 18px;
+    bottom: 18px;
+    width: 52px;
+    height: 52px;
+    font-size: 30px;
   }
 
   video {
