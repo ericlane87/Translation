@@ -109,6 +109,8 @@ const els = {
   apiBaseStatus: byId("apiBaseStatus"),
   backendPanel: byId("backendPanel"),
   devPreviewBtn: byId("devPreviewBtn"),
+  contactsRail: byId("contactsRail"),
+  toggleContactsRailBtn: byId("toggleContactsRailBtn"),
   contactsTitle: byId("contactsTitle"),
   historyTitle: byId("historyTitle"),
   contactNameInput: byId("contactNameInput"),
@@ -217,6 +219,7 @@ const state = {
   audioUnlockHintShown: false,
   debugEntries: [],
   subtitleOverlayTimer: null,
+  contactsRailCollapsed: false,
 };
 const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -230,6 +233,7 @@ els.callBtn.addEventListener("click", startCall);
 els.saveApiBaseBtn?.addEventListener("click", saveApiBaseUrlFromForm);
 els.clearApiBaseBtn?.addEventListener("click", clearApiBaseUrl);
 els.devPreviewBtn.addEventListener("click", toggleDevCallPreview);
+els.toggleContactsRailBtn?.addEventListener("click", toggleContactsRail);
 els.answerBtn.addEventListener("click", answerIncomingCall);
 els.rejectBtn.addEventListener("click", rejectIncomingCall);
 els.endCallBtn.addEventListener("click", endCall);
@@ -1439,6 +1443,15 @@ async function cleanupAuthScoped() {
 function setStatus(el, text) {
   if (!el) return;
   el.textContent = text;
+}
+
+function toggleContactsRail() {
+  state.contactsRailCollapsed = !state.contactsRailCollapsed;
+  els.contactsRail?.classList.toggle("contacts-rail-collapsed", state.contactsRailCollapsed);
+  if (els.toggleContactsRailBtn) {
+    els.toggleContactsRailBtn.textContent = state.contactsRailCollapsed ? "Expand" : "Collapse";
+    els.toggleContactsRailBtn.setAttribute("aria-expanded", state.contactsRailCollapsed ? "false" : "true");
+  }
 }
 
 function setCallHint(text, tone = "info") {

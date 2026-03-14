@@ -606,9 +606,78 @@ label {
 
 .dash-main {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-content: start;
+}
+
+.dash-primary {
+  display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
   align-content: start;
+}
+
+.contacts-rail {
+  padding: 22px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  position: sticky;
+  top: 24px;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+.contacts-rail-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contacts-rail-collapsed {
+  padding: 18px 14px;
+  width: 88px;
+  justify-items: center;
+}
+
+.contacts-rail-collapsed .contacts-rail-head {
+  width: 100%;
+  justify-content: center;
+}
+
+.contacts-rail-collapsed .contacts-rail-head .eyebrow,
+.contacts-rail-collapsed .contacts-rail-head h2,
+.contacts-rail-collapsed #contactsStatus,
+.contacts-rail-collapsed #contactsList {
+  display: none;
+}
+
+.contacts-rail-collapsed .contact-add-btn {
+  width: 56px;
+  min-width: 56px;
+  padding: 0;
+  border-radius: 18px;
+  font-size: 28px;
+}
+
+.contacts-rail-collapsed .contact-add-btn::before {
+  content: "+";
+}
+
+.contacts-rail-collapsed .contact-add-btn {
+  color: transparent;
+}
+
+.contacts-list-rail {
+  max-height: calc(100vh - 250px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.contact-add-btn {
+  width: 100%;
 }
 
 .sidebar-actions {
@@ -703,26 +772,6 @@ label {
   max-height: 320px;
   overflow: auto;
   padding-right: 4px;
-}
-
-.contact-fab {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: center;
-  justify-self: end;
-  width: 52px;
-  height: 52px;
-  border: 0;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #22a06b, #1b7f57);
-  color: #fff;
-  font-size: 30px;
-  line-height: 1;
-  box-shadow: 0 18px 36px rgba(27, 127, 87, 0.28);
-}
-
-.contact-fab:hover {
-  background: linear-gradient(180deg, #1f915f, #176f4d);
 }
 
 .contact-item {
@@ -1219,6 +1268,10 @@ video {
     grid-template-columns: 1fr;
   }
 
+  .dash-primary {
+    grid-template-columns: 1fr;
+  }
+
   .span-2 {
     grid-column: span 1;
   }
@@ -1276,10 +1329,9 @@ video {
     overflow: auto;
   }
 
-  .contact-fab {
-    width: 48px;
-    height: 48px;
-    font-size: 28px;
+  .contacts-rail {
+    position: static;
+    max-height: none;
   }
 
   video {
