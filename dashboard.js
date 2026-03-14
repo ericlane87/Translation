@@ -86,6 +86,7 @@ const i18n = {
 const els = {
   userEmail: byId("userEmail"),
   myIdLabel: byId("myIdLabel"),
+  shareIdBtn: byId("shareIdBtn"),
   dashTitle: byId("dashTitle"),
   setupPanel: byId("setupPanel"),
   setupTitle: byId("setupTitle"),
@@ -102,6 +103,10 @@ const els = {
   callModal: byId("callModal"),
   logoutBtn: byId("logoutBtn"),
   dialIdInput: byId("dialIdInput"),
+  inviteBanner: byId("inviteBanner"),
+  inviteBannerText: byId("inviteBannerText"),
+  inviteCallBtn: byId("inviteCallBtn"),
+  inviteAddContactBtn: byId("inviteAddContactBtn"),
   callBtn: byId("callBtn"),
   apiBaseInput: byId("apiBaseInput"),
   saveApiBaseBtn: byId("saveApiBaseBtn"),
@@ -220,6 +225,7 @@ const state = {
   debugEntries: [],
   subtitleOverlayTimer: null,
   contactsRailCollapsed: false,
+  pendingInviteCallId: "",
 };
 const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -230,6 +236,9 @@ els.logoutBtn.addEventListener("click", async () => {
   window.location.href = "auth.html";
 });
 els.callBtn.addEventListener("click", startCall);
+els.shareIdBtn?.addEventListener("click", shareMyInviteLink);
+els.inviteCallBtn?.addEventListener("click", callPendingInvite);
+els.inviteAddContactBtn?.addEventListener("click", addPendingInviteToContacts);
 els.saveApiBaseBtn?.addEventListener("click", saveApiBaseUrlFromForm);
 els.clearApiBaseBtn?.addEventListener("click", clearApiBaseUrl);
 els.devPreviewBtn.addEventListener("click", toggleDevCallPreview);
@@ -310,6 +319,7 @@ onAuthStateChanged(auth, async (user) => {
   locale.code = state.profile?.language === "es" ? "es" : "en";
   applyDashboardLocale();
   els.myIdLabel.textContent = `ID: ${state.profile.callId}`;
+  initializeInviteTarget();
 
   startDashboardRealtime();
 });
@@ -354,6 +364,85 @@ function updateApiBaseStatus(message) {
     els.apiBaseStatus,
     "No backend URL set. Calls will be STUN-only, and transcription/translation will not work."
   );
+}
+
+function buildInviteUrl(callId) {
+  const invite = normalizeCallId(callId);
+  if (!invite) return "";
+  const url = new URL("auth.html", window.location.href);
+  url.searchParams.set("invite", invite);
+  return url.toString();
+}
+
+async function shareMyInviteLink() {
+  const callId = normalizeCallId(state.profile?.callId || "");
+  if (!callId) {
+    setStatus(els.callStatus, "No call ID available to share.");
+    return;
+  }
+  const inviteUrl = buildInviteUrl(callId);
+  if (!inviteUrl) return;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({
+        title: "VoiceBridge",
+        text: `Call me on VoiceBridge: ${callId}`,
+        url: inviteUrl,
+      });
+      setStatus(els.callStatus, "Invite link shared.");
+      return;
+    }
+  } catch {
+    // Fall back to clipboard below.
+  }
+
+  try {
+    await navigator.clipboard.writeText(inviteUrl);
+    setStatus(els.callStatus, "Invite link copied.");
+  } catch {
+    setStatus(els.callStatus, inviteUrl);
+  }
+}
+
+function initializeInviteTarget() {
+  const params = new URLSearchParams(window.location.search);
+  const invite = normalizeCallId(params.get("invite") || "");
+  state.pendingInviteCallId = invite;
+  if (!invite) {
+    els.inviteBanner?.classList.add("hidden");
+    return;
+  }
+  if (els.inviteBannerText) {
+    els.inviteBannerText.textContent = `${invite} shared their VoiceBridge link with you.`;
+  }
+  if (els.dialIdInput) {
+    els.dialIdInput.value = invite;
+  }
+  els.inviteBanner?.classList.remove("hidden");
+}
+
+function callPendingInvite() {
+  const invite = normalizeCallId(state.pendingInviteCallId || "");
+  if (!invite) return;
+  if (els.dialIdInput) {
+    els.dialIdInput.value = invite;
+  }
+  startCallById(invite);
+}
+
+function addPendingInviteToContacts() {
+  const invite = normalizeCallId(state.pendingInviteCallId || "");
+  if (!invite) return;
+  toggleContactsRail();
+  setContactFormVisible(true);
+  if (els.contactCallIdInput) {
+    els.contactCallIdInput.value = invite;
+  }
+  if (els.contactNameInput && !els.contactNameInput.value.trim()) {
+    els.contactNameInput.value = invite;
+  }
+  setStatus(els.contactsStatus, `Ready to save ${invite} to contacts.`);
 }
 
 async function saveApiBaseUrlFromForm() {

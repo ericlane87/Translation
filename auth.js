@@ -26,14 +26,22 @@ const els = {
   authStatus: byId("authStatus"),
 };
 
+const inviteTarget = normalizeCallId(new URLSearchParams(window.location.search).get("invite") || "");
+
+function dashboardHref() {
+  return inviteTarget ? `dashboard.html?invite=${encodeURIComponent(inviteTarget)}` : "dashboard.html";
+}
+
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    window.location.href = "dashboard.html";
+    window.location.href = dashboardHref();
   }
 });
 
 if (window.location.hash === "#signup") {
-  window.location.href = "signup.html";
+  window.location.href = inviteTarget
+    ? `signup.html?invite=${encodeURIComponent(inviteTarget)}`
+    : "signup.html";
 }
 
 els.loginBtn?.addEventListener("click", login);
@@ -50,7 +58,7 @@ async function login() {
 
   try {
     await signInWithEmailAndPassword(auth, email, password);
-    window.location.href = "dashboard.html";
+    window.location.href = dashboardHref();
   } catch (err) {
     setStatus(`Login failed: ${err.message}`);
   }
@@ -92,7 +100,7 @@ async function signup() {
       translateIncomingTo,
     });
 
-    window.location.href = "dashboard.html";
+    window.location.href = dashboardHref();
   } catch (err) {
     console.error("Signup failed", err);
     // Keep the auth user so we can recover manually if Firestore write fails.

@@ -593,6 +593,13 @@ label {
   border: 1px solid rgba(128, 153, 185, 0.18);
 }
 
+.id-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .id-pill {
   display: inline-block;
   width: fit-content;
@@ -757,6 +764,15 @@ label {
   gap: 12px;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.invite-banner {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(233, 248, 244, 0.96), rgba(242, 250, 248, 0.94));
+  border: 1px solid rgba(62, 171, 132, 0.2);
 }
 
 .log-list {

@@ -15,7 +15,10 @@
         </div>
         <div class="profile-block">
           <p id="userEmail" class="muted">-</p>
-          <p id="myIdLabel" class="id-pill">ID: -</p>
+          <div class="id-row">
+            <p id="myIdLabel" class="id-pill">ID: -</p>
+            <button id="shareIdBtn" class="sidebar-link ghost-link" type="button">Share</button>
+          </div>
           <div class="sidebar-actions">
             <a class="sidebar-link" href="settings.html">Settings</a>
             <button id="logoutBtn" class="sidebar-link ghost-link" type="button">Log Out</button>
@@ -37,6 +40,16 @@
 
         <section class="panel glass span-2">
           <h2 id="callSectionTitle">Start a Call</h2>
+          <div id="inviteBanner" class="invite-banner hidden">
+            <div>
+              <p class="eyebrow">Invite Link</p>
+              <p id="inviteBannerText">This person can be called or saved to contacts.</p>
+            </div>
+            <div class="dial-row">
+              <button id="inviteCallBtn" class="btn" type="button">Call Invite</button>
+              <button id="inviteAddContactBtn" class="btn ghost" type="button">Add to Contacts</button>
+            </div>
+          </div>
           <div class="dial-row">
             <input id="dialIdInput" type="text" placeholder="Enter recipient call ID" />
             <button id="callBtn" class="btn">Call</button>
