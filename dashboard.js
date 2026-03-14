@@ -20,6 +20,7 @@ import { auth, db } from "./firebase-client.js";
 const runtimeConfig = window.VOICEBRIDGE_CONFIG || {};
 const apiBaseStorageKey = String(runtimeConfig.API_BASE_STORAGE_KEY || "VOICEBRIDGE_API_BASE_URL");
 let apiBaseUrl = normalizeApiBaseUrl(String(runtimeConfig.API_BASE_URL || ""));
+const debugMode = new URLSearchParams(window.location.search).get("debug") === "1";
 const locale = {
   code: "en",
 };
@@ -249,6 +250,7 @@ if (els.remoteAudio) {
 resetAllModals();
 applyDashboardLocale();
 initializeApiBaseControls();
+initializeDebugVisibility();
 
 onAuthStateChanged(auth, async (user) => {
   await cleanupAuthScoped();
@@ -1562,6 +1564,7 @@ function appendFeed(kind, primaryText, secondaryText = "") {
 }
 
 function logDebug(message) {
+  if (!debugMode) return;
   const stamp = new Date().toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -1594,6 +1597,15 @@ function renderDebugFeed() {
 function clearDebugFeed() {
   state.debugEntries = [];
   renderDebugFeed();
+}
+
+function initializeDebugVisibility() {
+  const shell = els.clearDebugBtn?.closest(".debug-feed-shell");
+  if (!shell) return;
+  shell.classList.toggle("hidden", !debugMode);
+  if (debugMode) {
+    renderDebugFeed();
+  }
 }
 
 async function performTranslationFromText(spoken) {
