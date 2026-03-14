@@ -94,6 +94,7 @@ const els = {
   setupProfileBtn: byId("setupProfileBtn"),
   setupStatus: byId("setupStatus"),
   callSectionTitle: byId("callSectionTitle"),
+  callPanel: byId("callPanel"),
   incomingModal: byId("incomingModal"),
   incomingCallerLabel: byId("incomingCallerLabel"),
   outgoingModal: byId("outgoingModal"),
@@ -110,7 +111,12 @@ const els = {
   backendPanel: byId("backendPanel"),
   devPreviewBtn: byId("devPreviewBtn"),
   contactsTitle: byId("contactsTitle"),
+  contactsPanel: byId("contactsPanel"),
   historyTitle: byId("historyTitle"),
+  historyPanel: byId("historyPanel"),
+  tabCallBtn: byId("tabCallBtn"),
+  tabContactsBtn: byId("tabContactsBtn"),
+  tabHistoryBtn: byId("tabHistoryBtn"),
   contactNameInput: byId("contactNameInput"),
   contactCallIdInput: byId("contactCallIdInput"),
   addContactBtn: byId("addContactBtn"),
@@ -217,6 +223,7 @@ const state = {
   audioUnlockHintShown: false,
   debugEntries: [],
   subtitleOverlayTimer: null,
+  activeDashboardTab: "call",
 };
 const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -227,6 +234,9 @@ els.logoutBtn.addEventListener("click", async () => {
   window.location.href = "auth.html";
 });
 els.callBtn.addEventListener("click", startCall);
+els.tabCallBtn?.addEventListener("click", () => setDashboardTab("call"));
+els.tabContactsBtn?.addEventListener("click", () => setDashboardTab("contacts"));
+els.tabHistoryBtn?.addEventListener("click", () => setDashboardTab("history"));
 els.saveApiBaseBtn?.addEventListener("click", saveApiBaseUrlFromForm);
 els.clearApiBaseBtn?.addEventListener("click", clearApiBaseUrl);
 els.devPreviewBtn.addEventListener("click", toggleDevCallPreview);
@@ -1441,6 +1451,16 @@ function setStatus(el, text) {
   el.textContent = text;
 }
 
+function setDashboardTab(tab) {
+  state.activeDashboardTab = ["call", "contacts", "history"].includes(tab) ? tab : "call";
+  els.callPanel?.classList.toggle("hidden", state.activeDashboardTab !== "call");
+  els.contactsPanel?.classList.toggle("hidden", state.activeDashboardTab !== "contacts");
+  els.historyPanel?.classList.toggle("hidden", state.activeDashboardTab !== "history");
+  els.tabCallBtn?.classList.toggle("dashboard-tab-active", state.activeDashboardTab === "call");
+  els.tabContactsBtn?.classList.toggle("dashboard-tab-active", state.activeDashboardTab === "contacts");
+  els.tabHistoryBtn?.classList.toggle("dashboard-tab-active", state.activeDashboardTab === "history");
+}
+
 function setCallHint(text, tone = "info") {
   if (!els.callHint) return;
   els.callHint.textContent = text;
@@ -1470,8 +1490,12 @@ function applyDashboardLocale() {
   if (els.incomingStatus) els.incomingStatus.textContent = t("incomingIdle");
   if (els.callStatus) els.callStatus.textContent = t("callIdle");
   if (els.contactsStatus) els.contactsStatus.textContent = t("contactsHint");
+  if (els.tabCallBtn) els.tabCallBtn.textContent = t("callSectionTitle");
+  if (els.tabContactsBtn) els.tabContactsBtn.textContent = t("contactsTitle");
+  if (els.tabHistoryBtn) els.tabHistoryBtn.textContent = t("historyTitle");
   updateDevPreviewButton();
   renderContacts();
+  setDashboardTab(state.activeDashboardTab);
 }
 
 function showCallModal() {
