@@ -611,35 +611,6 @@ label {
   align-content: start;
 }
 
-.dashboard-tabs-shell {
-  display: inline-flex;
-  gap: 8px;
-  padding: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(132, 165, 200, 0.18);
-  width: fit-content;
-  box-shadow: var(--shadow-md);
-}
-
-.dashboard-tab {
-  min-height: 42px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: #5c7288;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.dashboard-tab-active {
-  background: #fff;
-  color: var(--text);
-  box-shadow: 0 8px 18px rgba(20, 41, 64, 0.08);
-}
-
 .sidebar-actions {
   display: flex;
   gap: 10px;
