@@ -1426,6 +1426,7 @@ function applyDashboardLocale() {
 }
 
 function showCallModal() {
+  resetTranslationUi();
   setModalVisible(els.callModal, true);
   updateRemoteAvatarVisibility();
   if (!state.devCallPreview) {
@@ -1438,6 +1439,7 @@ function hideCallModal() {
   if (!state.devCallPreview) {
     stopAutoTranslate();
   }
+  resetTranslationUi();
 }
 
 function showOutgoingModal(targetId) {
@@ -1661,6 +1663,13 @@ function hideSubtitleOverlay() {
   if (els.mobileSubtitleText) {
     els.mobileSubtitleText.textContent = "";
   }
+}
+
+function resetTranslationUi() {
+  if (els.translationFeed) {
+    els.translationFeed.innerHTML = "";
+  }
+  hideSubtitleOverlay();
 }
 
 function initializeDebugVisibility() {
