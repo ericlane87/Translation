@@ -32,8 +32,13 @@
 
       <section class="auth-card glass" id="signupPanel">
         <div class="auth-tabs">
-          <a class="auth-tab" href="auth.html">Log In</a>
-          <a class="auth-tab auth-tab-active" href="signup.html">Create Account</a>
+          <a id="loginTabLink" class="auth-tab" href="auth.html">Log In</a>
+          <a id="signupTabLink" class="auth-tab auth-tab-active" href="signup.html">Create Account</a>
+        </div>
+        <div id="authInviteBanner" class="auth-invite-banner hidden">
+          <p class="eyebrow">Invite Link</p>
+          <h3 id="authInviteTitle">Someone invited you to connect on VoiceBridge.</h3>
+          <p id="authInviteText" class="muted">Create your account to call them instantly or save them to contacts.</p>
         </div>
         <h2>Create Account</h2>
         <p class="muted">Set up your account details, call ID, and caption language preferences.</p>
@@ -63,7 +68,7 @@
           </label>
         </div>
         <button id="signupBtn" class="btn full">Create Account</button>
-        <p class="muted auth-switch">Already have an account? <a class="back-link" href="auth.html">Log in here</a>.</p>
+        <p class="muted auth-switch">Already have an account? <a id="loginSwitchLink" class="back-link" href="auth.html">Log in here</a>.</p>
         <p id="authStatus" class="status-line">Ready</p>
       </section>
     </main>

@@ -24,6 +24,13 @@ const els = {
   signupIncomingLanguage: byId("signupIncomingLanguage"),
   signupBtn: byId("signupBtn"),
   authStatus: byId("authStatus"),
+  authInviteBanner: byId("authInviteBanner"),
+  authInviteTitle: byId("authInviteTitle"),
+  authInviteText: byId("authInviteText"),
+  loginTabLink: byId("loginTabLink"),
+  signupTabLink: byId("signupTabLink"),
+  signupSwitchLink: byId("signupSwitchLink"),
+  loginSwitchLink: byId("loginSwitchLink"),
 };
 
 const inviteTarget = normalizeCallId(new URLSearchParams(window.location.search).get("invite") || "");
@@ -43,6 +50,8 @@ if (window.location.hash === "#signup") {
     ? `signup.html?invite=${encodeURIComponent(inviteTarget)}`
     : "signup.html";
 }
+
+initializeInviteUi();
 
 els.loginBtn?.addEventListener("click", login);
 els.signupBtn?.addEventListener("click", signup);
@@ -169,6 +178,27 @@ function byId(id) {
 
 function setStatus(message) {
   els.authStatus.textContent = message;
+}
+
+function initializeInviteUi() {
+  const loginHref = inviteTarget ? `auth.html?invite=${encodeURIComponent(inviteTarget)}` : "auth.html";
+  const signupHref = inviteTarget ? `signup.html?invite=${encodeURIComponent(inviteTarget)}` : "signup.html";
+
+  if (els.loginTabLink) els.loginTabLink.href = loginHref;
+  if (els.signupTabLink) els.signupTabLink.href = signupHref;
+  if (els.signupSwitchLink) els.signupSwitchLink.href = signupHref;
+  if (els.loginSwitchLink) els.loginSwitchLink.href = loginHref;
+
+  if (!inviteTarget) return;
+
+  els.authInviteBanner?.classList.remove("hidden");
+  if (els.authInviteTitle) {
+    els.authInviteTitle.textContent = `${inviteTarget} invited you to connect on VoiceBridge.`;
+  }
+  if (els.authInviteText) {
+    const mode = els.signupBtn ? "Create your account to call or save this contact right away." : "Sign in to call or save this contact right away.";
+    els.authInviteText.textContent = mode;
+  }
 }
 
 function normalizeCallId(input) {

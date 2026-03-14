@@ -460,6 +460,20 @@ p {
   letter-spacing: -0.04em;
 }
 
+.auth-invite-banner {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(233, 248, 244, 0.96), rgba(242, 250, 248, 0.94));
+  border: 1px solid rgba(62, 171, 132, 0.2);
+}
+
+.auth-invite-banner h3 {
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
 .auth-stepbar {
   display: flex;
   flex-wrap: wrap;
