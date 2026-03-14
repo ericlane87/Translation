@@ -9,16 +9,18 @@
   <body>
     <div class="dash-shell">
       <aside class="sidebar glass">
-        <div>
+        <div class="sidebar-brand">
           <p class="eyebrow">VoiceBridge</p>
           <h1 id="dashTitle">Calls</h1>
         </div>
         <div class="profile-block">
           <p id="userEmail" class="muted">-</p>
           <p id="myIdLabel" class="id-pill">ID: -</p>
+          <div class="sidebar-actions">
+            <a class="sidebar-link" href="settings.html">Settings</a>
+            <button id="logoutBtn" class="sidebar-link ghost-link" type="button">Log Out</button>
+          </div>
         </div>
-        <a class="btn ghost full" href="settings.html">Settings</a>
-        <button id="logoutBtn" class="btn ghost full">Log Out</button>
       </aside>
 
       <main class="dash-main">
@@ -61,12 +63,15 @@
 
         <section class="panel glass span-2">
           <h2 id="contactsTitle">Contacts</h2>
-          <div class="dial-row">
+          <div class="section-head">
+            <p id="contactsStatus" class="status-line">Add a contact to call faster.</p>
+            <button id="toggleContactFormBtn" class="btn" type="button">Create Contact</button>
+          </div>
+          <div id="contactForm" class="contact-form hidden">
             <input id="contactNameInput" type="text" placeholder="Contact name (e.g. Michael)" />
             <input id="contactCallIdInput" type="text" placeholder="Contact call ID (e.g. michael-01)" />
-            <button id="addContactBtn" class="btn">Save Contact</button>
+            <button id="addContactBtn" class="btn" type="button">Save Contact</button>
           </div>
-          <p id="contactsStatus" class="status-line">Add a contact to call faster.</p>
           <div id="contactsList" class="contacts-list"></div>
         </section>
 

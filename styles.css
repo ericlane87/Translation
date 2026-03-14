@@ -257,13 +257,18 @@ label {
 .sidebar {
   padding: 26px 22px;
   display: grid;
-  grid-template-rows: auto auto auto 1fr;
-  gap: 18px;
+  grid-template-rows: auto auto 1fr;
+  gap: 22px;
   align-content: start;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 253, 255, 0.74)),
     radial-gradient(circle at top left, rgba(207, 233, 223, 0.8), transparent 34%);
   box-shadow: var(--shadow-lg);
+}
+
+.sidebar-brand {
+  display: grid;
+  gap: 8px;
 }
 
 .sidebar h1 {
@@ -274,7 +279,11 @@ label {
 
 .profile-block {
   display: grid;
-  gap: 8px;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(128, 153, 185, 0.18);
 }
 
 .id-pill {
@@ -295,6 +304,32 @@ label {
   align-content: start;
 }
 
+.sidebar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sidebar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(129, 158, 186, 0.26);
+  background: rgba(255, 255, 255, 0.7);
+  color: #204160;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ghost-link {
+  appearance: none;
+}
+
 .panel {
   padding: 24px;
   display: grid;
@@ -306,6 +341,19 @@ label {
 .panel h2 {
   font-size: 24px;
   letter-spacing: -0.03em;
+}
+
+.section-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.contact-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
 }
 
 .span-2 {
@@ -707,6 +755,15 @@ video {
 
   .sidebar h1 {
     font-size: 34px;
+  }
+
+  .section-head {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .contact-form {
+    grid-template-columns: 1fr;
   }
 
   video {

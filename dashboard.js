@@ -114,6 +114,8 @@ const els = {
   contactNameInput: byId("contactNameInput"),
   contactCallIdInput: byId("contactCallIdInput"),
   addContactBtn: byId("addContactBtn"),
+  toggleContactFormBtn: byId("toggleContactFormBtn"),
+  contactForm: byId("contactForm"),
   contactsStatus: byId("contactsStatus"),
   contactsList: byId("contactsList"),
   answerBtn: byId("answerBtn"),
@@ -231,6 +233,7 @@ els.toggleCameraBtn.addEventListener("click", () => {
 els.setupProfileBtn.addEventListener("click", setupMissingProfileFromForm);
 els.cancelOutgoingBtn.addEventListener("click", cancelOutgoingCall);
 els.addContactBtn?.addEventListener("click", saveContact);
+els.toggleContactFormBtn?.addEventListener("click", toggleContactForm);
 els.clearDebugBtn?.addEventListener("click", clearDebugFeed);
 els.remoteVideo.addEventListener("loadeddata", updateRemoteAvatarVisibility);
 els.remoteVideo.addEventListener("playing", updateRemoteAvatarVisibility);
@@ -605,9 +608,22 @@ async function saveContact() {
 
     els.contactNameInput.value = "";
     els.contactCallIdInput.value = "";
+    setContactFormVisible(false);
     setStatus(els.contactsStatus, t("contactAdded"));
   } catch (err) {
     setStatus(els.contactsStatus, `Contact save failed: ${err.message}`);
+  }
+}
+
+function toggleContactForm() {
+  setContactFormVisible(els.contactForm?.classList.contains("hidden"));
+}
+
+function setContactFormVisible(visible) {
+  if (!els.contactForm) return;
+  els.contactForm.classList.toggle("hidden", !visible);
+  if (els.toggleContactFormBtn) {
+    els.toggleContactFormBtn.textContent = visible ? "Close" : "Create Contact";
   }
 }
 
