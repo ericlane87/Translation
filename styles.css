@@ -606,22 +606,22 @@ label {
 
 .dash-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
   align-content: start;
 }
 
 .dash-primary {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 16px;
   align-content: start;
 }
 
 .contacts-rail {
-  padding: 22px;
+  padding: 18px;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   align-content: start;
   position: sticky;
   top: 24px;
@@ -633,7 +633,7 @@ label {
   display: flex;
   align-items: start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .contacts-rail-collapsed {
@@ -671,13 +671,14 @@ label {
 }
 
 .contacts-list-rail {
-  max-height: calc(100vh - 250px);
+  max-height: calc(100vh - 220px);
   overflow: auto;
   padding-right: 4px;
 }
 
 .contact-add-btn {
   width: 100%;
+  min-height: 42px;
 }
 
 .sidebar-actions {
@@ -768,7 +769,7 @@ label {
 
 .contacts-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   max-height: 320px;
   overflow: auto;
   padding-right: 4px;
@@ -778,11 +779,11 @@ label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   border: 1px solid rgba(137, 165, 190, 0.18);
-  border-radius: 20px;
-  padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: 16px;
+  padding: 12px 12px 12px 14px;
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .contact-meta {
@@ -791,13 +792,20 @@ label {
 }
 
 .contact-meta strong {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .contact-meta span {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
+}
+
+.contact-call-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .log-item {

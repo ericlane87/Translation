@@ -587,7 +587,7 @@ function renderContacts() {
     meta.innerHTML = `<strong>${escapeHtml(contact.name || contact.callId || "-")}</strong><span>${escapeHtml(contact.callId || "-")}</span>`;
 
     const callBtn = document.createElement("button");
-    callBtn.className = "btn";
+    callBtn.className = "btn ghost contact-call-btn";
     callBtn.type = "button";
     callBtn.textContent = t("contactCall");
     callBtn.addEventListener("click", () => callContact(contact.callId || ""));
