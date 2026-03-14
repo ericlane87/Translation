@@ -621,7 +621,7 @@ async function saveContact() {
 }
 
 function toggleContactForm() {
-  setContactFormVisible(els.contactForm?.classList.contains("hidden"));
+  setContactFormVisible(els.contactDrawer?.classList.contains("hidden"));
 }
 
 function setContactFormVisible(visible) {
