@@ -7,7 +7,7 @@ import {
   getDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { auth, db } from "./firebase-client.js";
+import { auth, db } from "./firebase-client.js?v=20260314-1";
 
 const els = {
   logoutBtn: byId("logoutBtn"),

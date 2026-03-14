@@ -15,7 +15,7 @@ import {
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { auth, db } from "./firebase-client.js";
+import { auth, db } from "./firebase-client.js?v=20260314-1";
 
 const runtimeConfig = window.VOICEBRIDGE_CONFIG || {};
 const apiBaseStorageKey = String(runtimeConfig.API_BASE_STORAGE_KEY || "VOICEBRIDGE_API_BASE_URL");
