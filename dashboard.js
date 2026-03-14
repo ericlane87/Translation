@@ -125,6 +125,8 @@ const els = {
   remoteVideo: byId("remoteVideo"),
   remoteAudio: byId("remoteAudio"),
   remoteAvatar: byId("remoteAvatar"),
+  subtitleOverlay: byId("subtitleOverlay"),
+  subtitleOverlayText: byId("subtitleOverlayText"),
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
   translationFeed: byId("translationFeed"),
@@ -192,6 +194,7 @@ const state = {
   audioUnlocked: false,
   audioUnlockHintShown: false,
   debugEntries: [],
+  subtitleOverlayTimer: null,
 };
 const DASH_SESSION_ID = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -1190,6 +1193,7 @@ function setupDataChannel(channel) {
       const translated = await translateText(payload.original, from, incomingTarget);
       const rendered = translated || "[translation unavailable]";
       appendFeed("incoming", rendered);
+      showSubtitleOverlay(rendered);
       logDebug(`translation rendered • "${rendered.slice(0, 80)}"`);
       if (!translated) {
         setStatus(
@@ -1329,6 +1333,7 @@ async function teardownCall() {
     els.remoteAudio.srcObject = null;
   }
   stopAutoTranslate();
+  hideSubtitleOverlay();
   stopRingback();
   hideOutgoingModal();
   setRemoteAvatarLabel("Remote");
@@ -1597,6 +1602,28 @@ function renderDebugFeed() {
 function clearDebugFeed() {
   state.debugEntries = [];
   renderDebugFeed();
+}
+
+function showSubtitleOverlay(text) {
+  if (!els.subtitleOverlay || !els.subtitleOverlayText) return;
+  els.subtitleOverlayText.textContent = text || "";
+  els.subtitleOverlay.classList.remove("hidden");
+  if (state.subtitleOverlayTimer) {
+    window.clearTimeout(state.subtitleOverlayTimer);
+  }
+  state.subtitleOverlayTimer = window.setTimeout(() => {
+    hideSubtitleOverlay();
+  }, 4200);
+}
+
+function hideSubtitleOverlay() {
+  if (state.subtitleOverlayTimer) {
+    window.clearTimeout(state.subtitleOverlayTimer);
+    state.subtitleOverlayTimer = null;
+  }
+  if (!els.subtitleOverlay || !els.subtitleOverlayText) return;
+  els.subtitleOverlay.classList.add("hidden");
+  els.subtitleOverlayText.textContent = "";
 }
 
 function initializeDebugVisibility() {

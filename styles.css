@@ -447,6 +447,43 @@ video {
   letter-spacing: 0.02em;
 }
 
+.subtitle-overlay {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.subtitle-chip {
+  width: min(100%, 560px);
+  border-radius: 16px;
+  background: rgba(7, 12, 24, 0.82);
+  color: #fff;
+  padding: 12px 14px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+}
+
+.subtitle-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #a9c5ff;
+  margin-bottom: 6px;
+}
+
+#subtitleOverlayText {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
 .translation-feed {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -607,6 +644,10 @@ video {
 
   .video-grid {
     grid-template-columns: 1fr;
+  }
+
+  #subtitleOverlayText {
+    font-size: 18px;
   }
 
   .call-modal {
