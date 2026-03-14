@@ -130,6 +130,9 @@ const els = {
   subtitleOverlay: byId("subtitleOverlay"),
   subtitleOverlayLabel: byId("subtitleOverlayLabel"),
   subtitleOverlayText: byId("subtitleOverlayText"),
+  mobileSubtitleBar: byId("mobileSubtitleBar"),
+  mobileSubtitleLabel: byId("mobileSubtitleLabel"),
+  mobileSubtitleText: byId("mobileSubtitleText"),
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
   translationFeed: byId("translationFeed"),
@@ -1615,12 +1618,24 @@ function clearDebugFeed() {
 }
 
 function showSubtitleOverlay(text) {
-  if (!els.subtitleOverlay || !els.subtitleOverlayText) return;
   if (els.subtitleOverlayLabel) {
     els.subtitleOverlayLabel.textContent = translatedForYouLabel();
   }
-  els.subtitleOverlayText.textContent = text || "";
-  els.subtitleOverlay.classList.remove("hidden");
+  if (els.subtitleOverlayText) {
+    els.subtitleOverlayText.textContent = text || "";
+  }
+  if (els.subtitleOverlay) {
+    els.subtitleOverlay.classList.remove("hidden");
+  }
+  if (els.mobileSubtitleLabel) {
+    els.mobileSubtitleLabel.textContent = translatedForYouLabel();
+  }
+  if (els.mobileSubtitleText) {
+    els.mobileSubtitleText.textContent = text || "";
+  }
+  if (els.mobileSubtitleBar) {
+    els.mobileSubtitleBar.classList.remove("hidden");
+  }
   if (state.subtitleOverlayTimer) {
     window.clearTimeout(state.subtitleOverlayTimer);
   }
@@ -1634,9 +1649,18 @@ function hideSubtitleOverlay() {
     window.clearTimeout(state.subtitleOverlayTimer);
     state.subtitleOverlayTimer = null;
   }
-  if (!els.subtitleOverlay || !els.subtitleOverlayText) return;
-  els.subtitleOverlay.classList.add("hidden");
-  els.subtitleOverlayText.textContent = "";
+  if (els.subtitleOverlay) {
+    els.subtitleOverlay.classList.add("hidden");
+  }
+  if (els.subtitleOverlayText) {
+    els.subtitleOverlayText.textContent = "";
+  }
+  if (els.mobileSubtitleBar) {
+    els.mobileSubtitleBar.classList.add("hidden");
+  }
+  if (els.mobileSubtitleText) {
+    els.mobileSubtitleText.textContent = "";
+  }
 }
 
 function initializeDebugVisibility() {
