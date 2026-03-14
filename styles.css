@@ -403,6 +403,34 @@ p {
   gap: 8px;
 }
 
+.invite-shell {
+  max-width: 760px;
+}
+
+.invite-card {
+  padding: 32px;
+  display: grid;
+  gap: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 248, 252, 0.9));
+  box-shadow: var(--shadow-lg);
+}
+
+.invite-card h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.invite-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.invite-note {
+  font-size: 14px;
+}
+
 .settings-shell {
   max-width: 760px;
   margin: 0 auto;

@@ -369,7 +369,7 @@ function updateApiBaseStatus(message) {
 function buildInviteUrl(callId) {
   const invite = normalizeCallId(callId);
   if (!invite) return "";
-  const url = new URL("auth.html", window.location.href);
+  const url = new URL("invite.html", window.location.href);
   url.searchParams.set("invite", invite);
   return url.toString();
 }
