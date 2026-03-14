@@ -67,11 +67,6 @@
             <p id="contactsStatus" class="status-line">Add a contact to call faster.</p>
             <button id="toggleContactFormBtn" class="btn" type="button">Create Contact</button>
           </div>
-          <div id="contactForm" class="contact-form hidden">
-            <input id="contactNameInput" type="text" placeholder="Contact name (e.g. Michael)" />
-            <input id="contactCallIdInput" type="text" placeholder="Contact call ID (e.g. michael-01)" />
-            <button id="addContactBtn" class="btn" type="button">Save Contact</button>
-          </div>
           <div id="contactsList" class="contacts-list"></div>
         </section>
 
@@ -152,7 +147,26 @@
       </div>
     </div>
 
+    <div id="contactDrawer" class="contact-drawer-shell hidden" aria-hidden="true">
+      <div id="contactDrawerBackdrop" class="contact-drawer-backdrop"></div>
+      <aside class="contact-drawer glass">
+        <div class="contact-drawer-head">
+          <div>
+            <p class="eyebrow">VoiceBridge</p>
+            <h2>Create Contact</h2>
+          </div>
+          <button id="closeContactDrawerBtn" class="sidebar-link ghost-link" type="button">Close</button>
+        </div>
+        <p class="muted">Save a name and call ID so you can call faster next time.</p>
+        <div id="contactForm" class="contact-form drawer-form">
+          <input id="contactNameInput" type="text" placeholder="Contact name (e.g. Michael)" />
+          <input id="contactCallIdInput" type="text" placeholder="Contact call ID (e.g. michael-01)" />
+          <button id="addContactBtn" class="btn" type="button">Save Contact</button>
+        </div>
+      </aside>
+    </div>
+
     <script src="app-config.js?v=20260313-5"></script>
-    <script type="module" src="dashboard.js?v=20260313-11"></script>
+    <script type="module" src="dashboard.js?v=20260313-12"></script>
   </body>
 </html>
