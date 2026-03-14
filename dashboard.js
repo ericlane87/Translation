@@ -128,6 +128,7 @@ const els = {
   remoteAudio: byId("remoteAudio"),
   remoteAvatar: byId("remoteAvatar"),
   subtitleOverlay: byId("subtitleOverlay"),
+  subtitleOverlayLabel: byId("subtitleOverlayLabel"),
   subtitleOverlayText: byId("subtitleOverlayText"),
   toggleMuteBtn: byId("toggleMuteBtn"),
   toggleCameraBtn: byId("toggleCameraBtn"),
@@ -1566,7 +1567,7 @@ function appendFeed(kind, primaryText, secondaryText = "") {
   const primary = row.querySelector(".caption-primary");
   const secondary = row.querySelector(".caption-secondary");
   if (title) {
-    title.textContent = kind === "incoming" ? "Translated for you" : "You said";
+    title.textContent = kind === "incoming" ? translatedForYouLabel() : localSpeakerLabel();
   }
   if (primary) {
     primary.textContent = primaryText || "";
@@ -1615,6 +1616,9 @@ function clearDebugFeed() {
 
 function showSubtitleOverlay(text) {
   if (!els.subtitleOverlay || !els.subtitleOverlayText) return;
+  if (els.subtitleOverlayLabel) {
+    els.subtitleOverlayLabel.textContent = translatedForYouLabel();
+  }
   els.subtitleOverlayText.textContent = text || "";
   els.subtitleOverlay.classList.remove("hidden");
   if (state.subtitleOverlayTimer) {
@@ -1690,6 +1694,15 @@ function updateTranslationLegend() {
     : "";
   els.translationLegend.textContent =
     `You speak ${myLanguage}. Incoming translated captions appear here in ${incomingLanguage}.${remoteLine}`;
+}
+
+function translatedForYouLabel() {
+  return locale.code === "es" ? "Traducido para ti" : "Translated for you";
+}
+
+function localSpeakerLabel() {
+  const source = state.profile?.callId || state.user?.email || "You";
+  return formatPeerDisplayName(source);
 }
 
 function resolveRemoteIncomingLanguage(sourceLang = state.profile?.language === "es" ? "es" : "en") {
