@@ -21,6 +21,7 @@ const runtimeConfig = window.VOICEBRIDGE_CONFIG || {};
 const apiBaseStorageKey = String(runtimeConfig.API_BASE_STORAGE_KEY || "VOICEBRIDGE_API_BASE_URL");
 let apiBaseUrl = normalizeApiBaseUrl(String(runtimeConfig.API_BASE_URL || ""));
 const debugMode = new URLSearchParams(window.location.search).get("debug") === "1";
+const defaultApiBaseUrl = normalizeApiBaseUrl(String(runtimeConfig.DEFAULT_API_BASE_URL || ""));
 const locale = {
   code: "en",
 };
@@ -106,6 +107,7 @@ const els = {
   saveApiBaseBtn: byId("saveApiBaseBtn"),
   clearApiBaseBtn: byId("clearApiBaseBtn"),
   apiBaseStatus: byId("apiBaseStatus"),
+  backendPanel: byId("backendPanel"),
   devPreviewBtn: byId("devPreviewBtn"),
   contactsTitle: byId("contactsTitle"),
   historyTitle: byId("historyTitle"),
@@ -302,6 +304,9 @@ function startDashboardRealtime() {
 }
 
 function initializeApiBaseControls() {
+  if (els.backendPanel) {
+    els.backendPanel.classList.toggle("hidden", !debugMode);
+  }
   if (els.apiBaseInput) {
     els.apiBaseInput.value = apiBaseUrl;
   }
@@ -349,16 +354,20 @@ async function saveApiBaseUrlFromForm() {
 }
 
 function clearApiBaseUrl() {
-  apiBaseUrl = "";
+  apiBaseUrl = defaultApiBaseUrl || "";
   window.VOICEBRIDGE_CONFIG = Object.assign({}, window.VOICEBRIDGE_CONFIG, {
-    API_BASE_URL: "",
+    API_BASE_URL: apiBaseUrl,
   });
   resetTurnConfigurationCache();
   if (els.apiBaseInput) {
-    els.apiBaseInput.value = "";
+    els.apiBaseInput.value = apiBaseUrl;
   }
   try {
-    window.localStorage.removeItem(apiBaseStorageKey);
+    if (apiBaseUrl) {
+      window.localStorage.setItem(apiBaseStorageKey, apiBaseUrl);
+    } else {
+      window.localStorage.removeItem(apiBaseStorageKey);
+    }
   } catch {
     // Ignore storage failures.
   }

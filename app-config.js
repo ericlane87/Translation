@@ -1,5 +1,6 @@
 (() => {
   const storageKey = "VOICEBRIDGE_API_BASE_URL";
+  const productionApiBaseUrl = "https://voicebridge-api.onrender.com";
   const existing = window.VOICEBRIDGE_CONFIG || {};
 
   const queryValue = (() => {
@@ -31,7 +32,8 @@
     return window.location.origin;
   })();
 
-  const apiBaseUrl = queryValue || storedValue || configValue || sameOriginValue || "";
+  const apiBaseUrl =
+    queryValue || storedValue || configValue || sameOriginValue || productionApiBaseUrl;
 
   if (queryValue) {
     try {
@@ -46,6 +48,7 @@
       // For static hosting, set this to your deployed backend URL.
       API_BASE_URL: apiBaseUrl,
       API_BASE_STORAGE_KEY: storageKey,
+      DEFAULT_API_BASE_URL: productionApiBaseUrl,
     },
     existing
   );
